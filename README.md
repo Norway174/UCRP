@@ -1,15 +1,16 @@
 # Universal Crafting Recipe Planner (UCRP)
 
-A powerful, visual crafting recipe planner that helps you organize complex crafting trees for games, projects, or any hierarchical recipe system. Built as a single-page web application with an intuitive drag-and-drop interface.
+A powerful, visual crafting recipe planner that helps you organize complex crafting trees for games, projects, or any hierarchical recipe system. Built as a single-page web application with an intuitive node-based interface and automatic layout system.
 
 ![UCRP Interface](https://iili.io/Fckn6va.png)
 
 ## 🚀 Features
 
 ### Visual Tree Builder
-- **Interactive Canvas**: Drag and zoom to navigate your recipe trees
+- **Interactive Canvas**: Pan and zoom to navigate your recipe trees with smooth camera controls
 - **Node-based System**: Each item is represented as a node with quantity and completion tracking
-- **Flexible Layout**: Switch between top-to-bottom and left-to-right tree orientations
+- **Automatic Layout**: Intelligent positioning system that organizes your trees hierarchically
+- **Flexible Orientation**: Switch between top-to-bottom and left-to-right tree layouts
 - **Ghost Nodes**: Automatic handling of circular dependencies with visual indicators
 
 ### Recipe Management
@@ -140,7 +141,8 @@ UCRP automatically detects and handles circular dependencies by:
 
 ### Performance
 - Optimized for trees with 100+ nodes
-- Efficient canvas rendering with transform caching
+- Efficient automatic layout algorithm with caching
+- Smooth pan/zoom controls with transform optimization
 - Lazy loading of UI elements
 - Minimal memory footprint
 
