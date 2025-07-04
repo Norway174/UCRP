@@ -1,0 +1,4239 @@
+<!--
+
+Recipe Tree Viewer
+
+The whole page is split into 2 columns.
+
+The Left side, is a tree view. Should be a canvar the user can look around in. And a button at the top to add a new Root node.
+
+The Root Node spawns a new node. Then this node has the option for a Name, and a Quantity. And a button for completed or not.
+This is template node all other nodes use.
+
+Then under this node, there is a dotted line to another node. This is just a square box with a + to add a new node.
+Pressing on it, adds a new node. That's the same as root node. But connected to the parent node. The Root node
+should still have the plus node, but shared with the newly added child node.
+
+And this child node should have a similiar button under it, to add to it's child.
+
+And this will eventually form a crafting tree, once we keep adding nodes.
+
+On the right column, it should list all the bottom nodes of the tree, and their calculated total quantity.
+
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal Crafting Recipe Planner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e1e;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            color: #cccccc;
+            overflow: hidden;
+        }
+
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .tree-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            cursor: grab;
+            background-image: 
+                radial-gradient(circle at 1px 1px, #3c3c3c 1px, transparent 0);
+            background-size: 20px 20px;
+            background-position: 0 0;
+            transform-origin: 0 0;
+        }
+
+        .tree-container:active {
+            cursor: grabbing;
+        }
+
+        .tree-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            transform-origin: 0 0;
+        }
+
+        .controls-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .left-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 350px;
+            background: #252526;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            border: 1px solid #3c3c3c;
+            pointer-events: auto;
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .right-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 300px;
+            max-height: calc(100vh - 40px);
+            background: #252526;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            overflow-y: auto;
+            border: 1px solid #3c3c3c;
+            pointer-events: auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #3c3c3c;
+        }
+
+        .header h1 {
+            color: #cccccc;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .add-root-btn {
+            background: #007acc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
+        }
+
+        .add-root-btn:hover {
+            background: #005a9e;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
+        }
+
+        .tree-node {
+            position: absolute;
+            background: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 6px;
+            padding: 15px;
+            min-width: 220px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            user-select: none;
+            cursor: default;
+            pointer-events: auto;
+        }
+
+        .tree-node:hover {
+            border-color: #007acc;
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+
+        .tree-node.selected {
+            border-color: #007acc;
+            box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
+        }
+
+        .node-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .node-name {
+            font-weight: 600;
+            color: #cccccc;
+            font-size: 14px;
+            border: none;
+            background: transparent;
+            outline: none;
+            width: 100%;
+            cursor: pointer;
+            padding: 2px 4px;
+            border-radius: 3px;
+            transition: background-color 0.2s ease;
+        }
+
+        .node-name:hover {
+            background-color: #3c3c3c;
+        }
+
+        .node-name.not-set {
+            color: #6a6a6a;
+            font-style: italic;
+        }
+
+        .name-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            z-index: 1000;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .name-dropdown-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #3c3c3c;
+            transition: background-color 0.2s ease;
+        }
+
+        .name-dropdown-item:hover {
+            background-color: #3c3c3c;
+        }
+
+        .name-dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .name-dropdown-item.new-item {
+            color: #007acc;
+            font-weight: 600;
+        }
+
+        .name-dropdown-item.selected {
+            background-color: #007acc;
+            color: white;
+        }
+
+        .name-input-container {
+            position: relative;
+            width: 100%;
+        }
+
+        .name-input {
+            width: 100%;
+            padding: 4px 6px;
+            border: 1px solid #007acc;
+            border-radius: 3px;
+            background: #1e1e1e;
+            color: #cccccc;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .name-input:focus {
+            border-color: #005a9e;
+        }
+
+        .node-complete {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node-complete.incomplete {
+            background: #ff9800;
+        }
+
+        .node-complete:hover {
+            transform: scale(1.05);
+        }
+
+        .node-quantity {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .node-quantity input {
+            width: 60px;
+            padding: 5px;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            text-align: center;
+            background: #1e1e1e;
+            color: #cccccc;
+        }
+
+        .node-quantity input:focus {
+            outline: none;
+            border-color: #007acc;
+        }
+
+        .node-quantity label {
+            font-size: 12px;
+            color: #999999;
+        }
+
+        .total-needed {
+            font-size: 12px;
+            color: #2aafc7;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: rgba(0, 122, 204, 0.1);
+            border: 2px dotted rgba(0, 122, 204, 0.3);
+        }
+
+		.total-needed::before {
+			content: "Total: ";
+            color: #1f889b;
+			font-size: 10px;
+			font-style: italic;
+		}
+
+        .node-notes {
+            margin-top: 8px;
+            position: relative;
+        }
+
+        .node-notes textarea {
+            width: 100%;
+            height: 40px;
+            padding: 4px 6px;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            background: transparent;
+            color: #999999;
+            font-size: 11px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            transition: all 0.2s ease;
+        }
+
+        .notes-toggle {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            border-radius: 3px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: #cccccc;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+
+        .notes-toggle:hover {
+            background: #4c4c4c;
+            border-color: #007acc;
+        }
+
+        .notes-toggle.global {
+            color: #007acc;
+            border-color: #007acc;
+        }
+
+        .node-notes textarea:focus + .notes-toggle {
+            display: flex;
+        }
+
+        .node-notes textarea:focus {
+            border-color: #3c3c3c;
+            background: #1e1e1e;
+            color: #cccccc;
+        }
+
+        .node-notes textarea::placeholder {
+            color: #6a6a6a;
+            font-style: italic;
+        }
+
+        .add-child-btn {
+            width: 30px;
+            height: 30px;
+            background: #007acc;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(0, 122, 204, 0.3);
+            z-index: 10;
+            position: absolute;
+        }
+
+        .add-child-btn-bottom {
+            bottom: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .add-child-btn-right {
+            right: -20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .add-child-btn-bottom:hover:not(.disabled) {
+            transform: translateX(-50%) scale(1.1);
+            background: #005a9e;
+            box-shadow: 0 6px 15px rgba(0, 122, 204, 0.4);
+        }
+
+        .add-child-btn-right:hover:not(.disabled) {
+            transform: translateY(-50%) scale(1.1);
+            background: #005a9e;
+            box-shadow: 0 6px 15px rgba(0, 122, 204, 0.4);
+        }
+
+        .add-child-btn.disabled {
+            background: #2d2d30;
+            color: #666;
+            cursor: default;
+            box-shadow: none;
+            border: 1px solid #3c3c3c;
+        }
+
+        .add-child-btn.disabled:hover {
+            background: #2d2d30 !important;
+        }
+
+        .add-child-btn.disabled.add-child-btn-bottom {
+            transform: translateX(-50%) !important;
+        }
+
+        .add-child-btn.disabled.add-child-btn-right {
+            transform: translateY(-50%) !important;
+        }
+
+        /* Custom Tooltip */
+        .tooltip {
+            position: absolute;
+            background: #252526;
+            color: #cccccc;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: normal;
+            white-space: nowrap;
+            visibility: hidden;
+            opacity: 0;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            border: 1px solid #3c3c3c;
+            pointer-events: none;
+            z-index: 1000;
+        }
+
+        /* Tooltip arrow */
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            border-style: solid;
+            border-width: 5px;
+        }
+
+        /* Bottom tooltip */
+        .tooltip.bottom {
+            top: calc(100% + 10px);
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .tooltip.bottom::after {
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            border-color: transparent transparent #3c3c3c transparent;
+        }
+
+        /* Right tooltip */
+        .tooltip.right {
+            left: calc(100% + 10px);
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .tooltip.right::after {
+            right: 100%;
+            top: 50%;
+            transform: translateY(-50%);
+            border-color: transparent #3c3c3c transparent transparent;
+        }
+
+        /* Show tooltip on hover for disabled buttons */
+        .add-child-btn.disabled:hover .tooltip {
+            visibility: visible;
+            opacity: 1;
+        }
+
+        .connection-line {
+            position: absolute;
+            background: #3c3c3c;
+            width: 2px;
+            transform-origin: 0 0;
+        }
+
+        .connection-line.horizontal {
+            height: 2px;
+            width: auto;
+        }
+
+        .right-panel h2 {
+            color: #cccccc;
+            margin-bottom: 15px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .summary-item {
+            background: #2d2d30;
+            border-radius: 4px;
+            padding: 8px 12px;
+            margin-bottom: 6px;
+            border-left: 3px solid #007acc;
+            border: 1px solid #3c3c3c;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .summary-item-number {
+            color: #007acc;
+            font-weight: 600;
+            font-size: 20px;
+            min-width: 20px;
+            text-align: center;
+			margin-right: 5px;
+        }
+
+		/* .summary-item-number::before {
+			content: "Total: ";
+			font-size: 10px;
+			color: #999999;
+			font-weight: 400;
+			margin-right: 10px;
+		} */
+
+		.summary-item-number::after {
+			content: "x";
+			margin-left: 5px;
+		}
+
+        .summary-item-name {
+            font-weight: 500;
+            color: #cccccc;
+            flex: 1;
+        }
+
+        .summary-item-quantity {
+            color: #999999;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #6a6a6a;
+            font-style: italic;
+            margin-top: 50px;
+        }
+
+        .delete-btn {
+            background: #d73a49;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            margin-left: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .delete-btn:hover {
+            background: #b31d28;
+            transform: scale(1.05);
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            gap: 5px;
+            z-index: 1000;
+            pointer-events: auto;
+        }
+
+        .zoom-btn {
+            background: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            color: #cccccc;
+            transition: all 0.3s ease;
+        }
+
+        .zoom-btn:hover {
+            background: #3c3c3c;
+            border-color: #007acc;
+        }
+
+        .materials-toggle {
+            background: #3c3c3c;
+            color: #cccccc;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 15px;
+            width: 100%;
+            text-align: left;
+            transition: all 0.3s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .materials-toggle:hover {
+            background: #4c4c4c;
+        }
+
+        .materials-toggle .toggle-icon {
+            transition: transform 0.3s ease;
+        }
+
+        .materials-toggle.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .materials-section {
+            margin-top: 15px;
+            border-top: 1px solid #3c3c3c;
+            padding-top: 15px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            max-height: 300px;
+            overflow-y: scroll;
+			padding-right: 10px;
+        }
+
+        .materials-section.collapsed {
+            max-height: 0;
+            margin-top: 0;
+            padding-top: 0;
+            opacity: 0;
+        }
+
+        .materials-section.empty {
+            max-height: none;
+            overflow-y: visible;
+            padding-top: 10px;
+            margin-top: 0;
+            border-top: none;
+        }
+
+        .materials-section.empty.collapsed {
+            max-height: 0;
+            margin-top: 0;
+            padding-top: 0;
+            opacity: 0;
+        }
+
+        .materials-section.empty .empty-state {
+            margin-top: 0;
+            padding-top: 0;
+        }
+
+        /* Custom scrollbar for materials section */
+        .materials-section::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .materials-section::-webkit-scrollbar-track {
+            background: #1e1e1e;
+            border-radius: 4px;
+        }
+
+        .materials-section::-webkit-scrollbar-thumb {
+            background: #3c3c3c;
+            border-radius: 4px;
+        }
+
+        .materials-section::-webkit-scrollbar-thumb:hover {
+            background: #4c4c4c;
+        }
+
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #3c3c3c;
+        }
+
+        .control-btn {
+            background: #2d2d30;
+            color: #cccccc;
+            border: 1px solid #3c3c3c;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            flex: 1;
+            text-align: center;
+        }
+
+        .control-btn#treeViewBtn {
+            flex: none;
+            width: 40px;
+            min-width: 40px;
+            height: 36px;
+            min-height: 36px;
+        }
+
+        .control-btn:hover {
+            background: #3c3c3c;
+            border-color: #007acc;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: #252526;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid #3c3c3c;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #3c3c3c;
+        }
+
+        .modal-title {
+            color: #cccccc;
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: #cccccc;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background-color 0.2s ease;
+        }
+
+        .modal-close:hover {
+            background: #3c3c3c;
+        }
+
+        .modal-content {
+            margin-bottom: 20px;
+        }
+
+        .modal-textarea {
+            width: 100%;
+            height: 300px;
+            padding: 12px;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            background: #1e1e1e;
+            color: #cccccc;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            resize: vertical;
+            outline: none;
+        }
+
+        .modal-textarea:focus {
+            border-color: #007acc;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .modal-btn.primary {
+            background: #007acc;
+            color: white;
+        }
+
+        .modal-btn.primary:hover {
+            background: #005a9e;
+        }
+
+        .modal-btn.secondary {
+            background: #3c3c3c;
+            color: #cccccc;
+        }
+
+        .modal-btn.secondary:hover {
+            background: #4c4c4c;
+        }
+
+        .modal-btn.success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .modal-btn.success:hover {
+            background: #45a049;
+        }
+
+        /* Tab styles */
+        .modal-tabs {
+            display: flex;
+            border-bottom: 1px solid #3c3c3c;
+            margin-bottom: 20px;
+        }
+
+        .modal-tab {
+            background: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-bottom: none;
+            padding: 10px 20px;
+            cursor: pointer;
+            color: #cccccc;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border-radius: 4px 4px 0 0;
+            margin-right: 2px;
+        }
+
+        .modal-tab.active {
+            background: #252526;
+            border-color: #007acc;
+            color: #007acc;
+        }
+
+        .modal-tab:hover:not(.active) {
+            background: #3c3c3c;
+        }
+
+        .modal-tab-content {
+            display: none;
+        }
+
+        .modal-tab-content.active {
+            display: block;
+        }
+
+        .materials-text {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            color: #cccccc;
+        }
+
+        .tree-text {
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            line-height: 1.4;
+            white-space: pre-wrap;
+            color: #cccccc;
+        }
+
+        .preset-item {
+            background: #2d2d30;
+            border: 1px solid #3c3c3c;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .preset-item:hover {
+            border-color: #007acc;
+            background: #3c3c3c;
+        }
+
+        .preset-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .preset-name {
+            font-weight: 600;
+            color: #cccccc;
+            font-size: 14px;
+        }
+
+        .preset-date {
+            color: #999999;
+            font-size: 12px;
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 8px;
+        }
+
+        .preset-btn {
+            padding: 4px 8px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .preset-btn.load {
+            background: #007acc;
+            color: white;
+        }
+
+        .preset-btn.load:hover {
+            background: #005a9e;
+        }
+
+        .preset-btn.share {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .preset-btn.share:hover {
+            background: #45a049;
+        }
+
+        .preset-btn.delete {
+            background: #d73a49;
+            color: white;
+        }
+
+        .preset-btn.delete:hover {
+            background: #b31d28;
+        }
+
+        .empty-presets {
+            text-align: center;
+            color: #6a6a6a;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        /* Tab-specific button styles */
+        .modal-tab-buttons {
+            display: none;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .modal-tab-buttons.active {
+            display: flex;
+        }
+
+        .tree-node.ghost {
+            opacity: 0.7;
+            border-style: dashed;
+            /* Remove pointer-events: none to allow interaction */
+        }
+
+        .circular-connection {
+            position: absolute;
+            border: 2px dashed #3c3c3c;
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .circular-arrow {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-style: solid;
+            border-width: 6px;
+            border-color: #3c3c3c transparent transparent transparent;
+            transform-origin: 50% 0;
+            pointer-events: none;
+        }
+
+        /* Rename Modal Styles */
+        .rename-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1100; /* Higher than other modals */
+        }
+
+        .rename-modal-content {
+            background: #252526;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid #3c3c3c;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+        }
+
+        .rename-modal-header {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #3c3c3c;
+        }
+
+        .rename-modal-title {
+            color: #cccccc;
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .rename-modal-message {
+            color: #cccccc;
+            margin-bottom: 20px;
+            line-height: 1.5;
+        }
+
+        .rename-modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .rename-modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .rename-modal-btn.keep {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .rename-modal-btn.keep:hover {
+            background: #45a049;
+        }
+
+        .rename-modal-btn.clear {
+            background: #d73a49;
+            color: white;
+        }
+
+        .rename-modal-btn.clear:hover {
+            background: #b31d28;
+        }
+
+        .rename-modal-btn.cancel {
+            background: #3c3c3c;
+            color: #cccccc;
+        }
+
+        .rename-modal-btn.cancel:hover {
+            background: #4c4c4c;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="tree-container" id="treeContainer">
+            <div class="tree-canvas" id="treeCanvas">
+                <div class="empty-state">
+                    Click "Add Root Node" to start building your recipe tree
+                </div>
+            </div>
+        </div>
+        
+        <div class="controls-overlay">
+            <div class="left-panel">
+                <div class="header">
+                    <h1>Recipe Tree</h1>
+                    <button class="add-root-btn" onclick="addRootNode()">+ Add Root Node</button>
+                </div>
+                
+                <div class="control-buttons">
+                    <button class="control-btn" id="treeViewBtn" onclick="toggleTreeView()">▼</button>
+                    <button class="control-btn" onclick="saveLoadData()">Save/Load</button>
+                    <button class="control-btn" onclick="shareTree()">Share</button>
+                    <button class="control-btn" onclick="resetTree()">Reset</button>
+                </div>
+                
+                <button class="materials-toggle" onclick="toggleMaterials()">
+                    <span>Required Materials</span>
+                    <span class="toggle-icon">▼</span>
+                </button>
+                
+                <div class="materials-section" id="materialsSection">
+                    <div id="summaryContainer">
+                        <div class="empty-state">
+                            Add nodes to see required materials
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+                <button class="zoom-btn" onclick="zoomOut()">-</button>
+                <button class="zoom-btn" onclick="resetZoom()">Reset</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Share Recipe Tree</h2>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            
+            <div class="modal-tabs">
+                <div class="modal-tab active" onclick="switchTab('materials')">Materials List</div>
+                <div class="modal-tab" onclick="switchTab('tree')">Tree View</div>
+                <div class="modal-tab" onclick="switchTab('json')">JSON</div>
+            </div>
+            
+            <div class="modal-content">
+                <div class="modal-tab-content active" id="materialsTab">
+                    <p style="margin-bottom: 10px; color: #cccccc;">Copy the materials list below:</p>
+                    <textarea class="modal-textarea materials-text" id="materialsTextarea" placeholder="Materials list will appear here..." readonly onclick="this.select()"></textarea>
+                </div>
+                
+                <div class="modal-tab-content" id="treeTab">
+                    <p style="margin-bottom: 10px; color: #cccccc;">Copy the ASCII tree view below:</p>
+                    <textarea class="modal-textarea tree-text" id="treeTextarea" placeholder="ASCII tree view will appear here..." readonly onclick="this.select()"></textarea>
+                </div>
+                
+                <div class="modal-tab-content" id="jsonTab">
+                    <p style="margin-bottom: 10px; color: #cccccc;">Copy the JSON below to share your recipe tree:</p>
+                    <textarea class="modal-textarea" id="shareTextarea" placeholder="Recipe tree JSON will appear here..." onclick="this.select()"></textarea>
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <!-- JSON Tab Buttons -->
+                <div class="modal-tab-buttons" id="jsonButtons">
+                    <button class="modal-btn success" onclick="copyActiveTab()">Copy</button>
+                    <button class="modal-btn primary" onclick="downloadActiveTab()">Download JSON</button>
+                    <button class="modal-btn secondary" onclick="applyJSON()">Apply JSON</button>
+                    <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+                </div>
+                
+                <!-- Tree View Tab Buttons -->
+                <div class="modal-tab-buttons" id="treeButtons">
+                    <button class="modal-btn success" onclick="copyActiveTab()">Copy</button>
+                    <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+                </div>
+                
+                <!-- Materials List Tab Buttons -->
+                <div class="modal-tab-buttons active" id="materialsButtons">
+                    <button class="modal-btn success" onclick="copyActiveTab()">Copy</button>
+                    <button class="modal-btn secondary" onclick="closeModal()">Cancel</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="saveLoadModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Save/Load Recipe Presets</h2>
+                <button class="modal-close" onclick="closeSaveLoadModal()">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #cccccc; margin-bottom: 10px;">Save Current Recipe</h3>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="presetNameInput" placeholder="Enter preset name..." 
+                               style="flex: 1; padding: 8px; border: 1px solid #3c3c3c; border-radius: 4px; background: #1e1e1e; color: #cccccc;">
+                        <button class="modal-btn primary" onclick="savePreset()">Save</button>
+                    </div>
+                </div>
+                
+                <div>
+                    <h3 style="color: #cccccc; margin-bottom: 10px;">Saved Presets</h3>
+                    <div id="presetsList" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Presets will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" onclick="closeSaveLoadModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add rename modal -->
+    <div class="rename-modal" id="renameModal">
+        <div class="rename-modal-content">
+            <div class="rename-modal-header">
+                <h2 class="rename-modal-title">Rename Item</h2>
+            </div>
+            <div class="rename-modal-message">
+                You are renaming "<span id="oldItemName"></span>" to "<span id="newItemName"></span>".<br><br>
+                What would you like to do with its existing crafting recipe (child items)?
+            </div>
+            <div class="rename-modal-buttons">
+                <button class="rename-modal-btn keep" onclick="handleRename('keep')">
+                    Keep Recipe
+                </button>
+                <button class="rename-modal-btn clear" onclick="handleRename('clear')">
+                    Clear Recipe
+                </button>
+                <button class="rename-modal-btn cancel" onclick="handleRename('cancel')">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let nodes = [];
+        let nextId = 1;
+        let selectedNode = null;
+        
+        // Global items registry
+        let items = new Map();
+        let nextItemId = 1;
+
+        class Item {
+            constructor(id, name = '') {
+                this.id = id;
+                this.name = name;
+                this.childItems = new Set(); // Set of item IDs that are children of this item
+                this.defaultQuantity = 1;
+                this.notes = '';
+            }
+
+            // Check if adding this item as a child would create a circular dependency
+            wouldCreateCircularDependency(targetItemId, visited = new Set()) {
+                if (visited.has(this.id)) return true;
+                if (this.id === targetItemId) return true;
+                
+                visited.add(this.id);
+                for (const childId of this.childItems) {
+                    const childItem = items.get(childId);
+                    if (childItem && childItem.wouldCreateCircularDependency(targetItemId, new Set(visited))) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            // Check if this item would create a circular dependency with a specific parent
+            wouldCreateCircularWithParent(parentItemId) {
+                if (!parentItemId) return false;
+                
+                // Check if parent item is already in our child hierarchy
+                const visited = new Set();
+                const checkChildren = (itemId) => {
+                    if (visited.has(itemId)) return false;
+                    if (itemId === parentItemId) return true;
+                    
+                    visited.add(itemId);
+                    const item = items.get(itemId);
+                    if (item) {
+                        for (const childId of item.childItems) {
+                            if (checkChildren(childId)) return true;
+                        }
+                    }
+                    return false;
+                };
+                
+                return checkChildren(this.id);
+            }
+
+            // Add a child item if it doesn't create a circular dependency
+            addChildItem(childItemId) {
+                const childItem = items.get(childItemId);
+                if (!childItem) return false;
+                
+                if (this.wouldCreateCircularDependency(childItemId)) {
+                    return false;
+                }
+                
+                this.childItems.add(childItemId);
+                return true;
+            }
+
+            removeChildItem(childItemId) {
+                this.childItems.delete(childItemId);
+            }
+        }
+
+        class TreeNode {
+            constructor(id, itemId = null, quantity = 1, x = 0, y = 0, parentId = null) {
+                this.id = id;
+                this.itemId = itemId;
+                this.quantity = quantity;
+                this.x = x;
+                this.y = y;
+                this.parentId = parentId;
+                this.completed = false;
+                this.children = []; // Array of node IDs (not item IDs)
+                this.level = 0;
+                this.isGhost = false; // For circular dependency visualization
+                this.localNotes = ''; // Local notes specific to this node
+                this.useGlobalNotes = true; // Default to global notes
+            }
+
+            get item() {
+                return this.itemId ? items.get(this.itemId) : null;
+            }
+
+            get name() {
+                return this.item ? this.item.name : '';
+            }
+
+            set name(value) {
+                if (!this.itemId) {
+                    // Create new item
+                    const newItem = new Item(nextItemId++, value);
+                    items.set(newItem.id, newItem);
+                    this.itemId = newItem.id;
+                    
+                    // If this node has a parent, add the item relationship
+                    if (this.parentId) {
+                        const parent = nodes.find(n => n.id === this.parentId);
+                        if (parent && parent.itemId) {
+                            const parentItem = items.get(parent.itemId);
+                            if (parentItem) {
+                                parentItem.addChildItem(newItem.id);
+                                
+                                // Sync all trees with the same parent item
+                                syncAllTreesWithSameItem(this.id);
+                            }
+                        }
+                    }
+                    
+                    recalculateLevels();
+                    renderAllNodes();
+                    updateSummary();
+                    autoSave();
+                } else {
+                    const item = this.item;
+                    // Only show rename modal if the node has children and already has a name
+                    if (this.children.length > 0 && item.name) {
+                        // Show rename modal
+                        const oldName = this.name;
+                        const modal = document.getElementById('renameModal');
+                        document.getElementById('oldItemName').textContent = oldName;
+                        document.getElementById('newItemName').textContent = value;
+                        
+                        // Store the rename data for later use
+                        modal.dataset.nodeId = this.id;
+                        modal.dataset.newName = value;
+                        
+                        modal.style.display = 'flex';
+                    } else {
+                        // Directly update the name without prompting
+                        item.name = value;
+                        updateNodeDisplay(this.id);
+                        updateSummary();
+                        autoSave();
+                    }
+                }
+            }
+
+            get notes() {
+                if (this.useGlobalNotes && this.item) {
+                    return this.item.notes;
+                } else {
+                    return this.localNotes;
+                }
+            }
+
+            set notes(value) {
+                if (this.useGlobalNotes && this.item) {
+                    this.item.notes = value;
+                } else {
+                    this.localNotes = value;
+                }
+            }
+        }
+
+        // Canvas transformation variables
+        let offsetX = 0;
+        let offsetY = 0;
+        let scale = 1;
+        
+        // Mouse state
+        let isDragging = false;
+        let lastMousePos = { x: 0, y: 0 };
+        
+        // Track tree bounds for camera compensation
+        let lastTreeBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+
+        // Flag to prevent camera compensation during initial load
+        let isInitialLoad = false;
+
+        // Tree view direction (true = top-to-bottom, false = left-to-right)
+        let treeDirectionTopToBottom = true;
+
+        // Global variable to track open dropdown
+        let openDropdownId = null;
+        let isDropdownItemBeingClicked = false;
+
+        // Helper function to format numbers with commas
+        function formatNumber(num) {
+            return num.toLocaleString();
+        }
+
+        // LocalStorage keys
+        const STORAGE_KEYS = {
+            TREE_DATA: 'recipeTreeData',
+            TREE_DIRECTION: 'recipeTreeDirection',
+            SAVED_PRESETS: 'recipeTreePresets',
+            CAMERA_STATE: 'recipeTreeCameraState',
+            MATERIALS_COLLAPSED: 'recipeTreeMaterialsCollapsed'
+        };
+
+        // Clean up unused items that have no nodes referencing them
+        function cleanupUnusedItems() {
+            const usedItemIds = new Set();
+            
+            // Collect all item IDs that are currently in use by nodes
+            nodes.forEach(node => {
+                if (node.itemId) {
+                    usedItemIds.add(node.itemId);
+                }
+            });
+            
+            // Remove items that are not used by any nodes
+            const itemsToDelete = [];
+            items.forEach((item, itemId) => {
+                if (!usedItemIds.has(itemId)) {
+                    itemsToDelete.push(itemId);
+                }
+            });
+            
+            itemsToDelete.forEach(itemId => {
+                items.delete(itemId);
+            });
+            
+            // Also clean up any child relationships that reference deleted items
+            items.forEach(item => {
+                const validChildItems = new Set();
+                item.childItems.forEach(childId => {
+                    if (items.has(childId)) {
+                        validChildItems.add(childId);
+                    }
+                });
+                item.childItems = validChildItems;
+            });
+        }
+
+        // Auto-save function
+        function autoSave() {
+            // Clean up unused items before saving
+            cleanupUnusedItems();
+            
+            const treeData = {
+                nodes: nodes.map(node => ({
+                    id: node.id,
+                    itemId: node.itemId,
+                    quantity: node.quantity,
+                    x: node.x,
+                    y: node.y,
+                    parentId: node.parentId,
+                    completed: node.completed,
+                    children: node.children,
+                    level: node.level,
+                    isGhost: node.isGhost,
+                    localNotes: node.localNotes,
+                    useGlobalNotes: node.useGlobalNotes
+                })),
+                items: Array.from(items.entries()).map(([id, item]) => ({
+                    id: id,
+                    name: item.name,
+                    childItems: Array.from(item.childItems),
+                    defaultQuantity: item.defaultQuantity,
+                    notes: item.notes
+                })),
+                nextId: nextId,
+                nextItemId: nextItemId,
+                treeDirection: treeDirectionTopToBottom
+            };
+            
+            localStorage.setItem(STORAGE_KEYS.TREE_DATA, JSON.stringify(treeData));
+            localStorage.setItem(STORAGE_KEYS.TREE_DIRECTION, JSON.stringify(treeDirectionTopToBottom));
+            
+            // Save camera state
+            const cameraState = {
+                offsetX: offsetX,
+                offsetY: offsetY,
+                scale: scale
+            };
+            localStorage.setItem(STORAGE_KEYS.CAMERA_STATE, JSON.stringify(cameraState));
+            
+            // Save materials section state
+            const materialsSection = document.getElementById('materialsSection');
+            const isMaterialsCollapsed = materialsSection.classList.contains('collapsed');
+            localStorage.setItem(STORAGE_KEYS.MATERIALS_COLLAPSED, JSON.stringify(isMaterialsCollapsed));
+        }
+
+        // Auto-load function
+        function autoLoad() {
+            try {
+                const savedTreeData = localStorage.getItem(STORAGE_KEYS.TREE_DATA);
+                const savedDirection = localStorage.getItem(STORAGE_KEYS.TREE_DIRECTION);
+                const savedCameraState = localStorage.getItem(STORAGE_KEYS.CAMERA_STATE);
+                const savedMaterialsCollapsed = localStorage.getItem(STORAGE_KEYS.MATERIALS_COLLAPSED);
+                
+                if (savedTreeData) {
+                    const treeData = JSON.parse(savedTreeData);
+                    
+                    // Clear existing data
+                    nodes = [];
+                    items.clear();
+                    
+                    // Load items first
+                    if (treeData.items) {
+                        treeData.items.forEach(itemData => {
+                            const item = new Item(itemData.id, itemData.name);
+                            item.defaultQuantity = itemData.defaultQuantity;
+                            item.notes = itemData.notes;
+                            items.set(item.id, item);
+                        });
+                        
+                        // Then restore child relationships
+                        treeData.items.forEach(itemData => {
+                            const item = items.get(itemData.id);
+                            if (item) {
+                                itemData.childItems.forEach(childId => {
+                                    if (items.has(childId)) {
+                                        item.childItems.add(childId);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Load nodes
+                    if (treeData.nodes) {
+                        treeData.nodes.forEach(nodeData => {
+                            const node = new TreeNode(
+                                nodeData.id,
+                                nodeData.itemId,
+                                nodeData.quantity,
+                                nodeData.x,
+                                nodeData.y,
+                                nodeData.parentId
+                            );
+                            node.completed = nodeData.completed;
+                            node.children = nodeData.children;
+                            node.level = nodeData.level;
+                            node.isGhost = nodeData.isGhost;
+                            node.localNotes = nodeData.localNotes || '';
+                            node.useGlobalNotes = nodeData.useGlobalNotes !== undefined ? nodeData.useGlobalNotes : true;
+                            nodes.push(node);
+                        });
+                    }
+                    
+                    // Update IDs
+                    nextId = treeData.nextId || Math.max(...nodes.map(n => n.id), 0) + 1;
+                    nextItemId = treeData.nextItemId || Math.max(...Array.from(items.keys()), 0) + 1;
+                }
+                
+                if (savedDirection !== null) {
+                    treeDirectionTopToBottom = JSON.parse(savedDirection);
+                }
+                
+                // Restore camera state if available
+                if (savedCameraState) {
+                    const cameraState = JSON.parse(savedCameraState);
+                    offsetX = cameraState.offsetX || 0;
+                    offsetY = cameraState.offsetY || 0;
+                    scale = cameraState.scale || 1;
+                    isInitialLoad = true;
+                }
+                
+                // Restore materials section state if available
+                if (savedMaterialsCollapsed !== null) {
+                    const isMaterialsCollapsed = JSON.parse(savedMaterialsCollapsed);
+                    const materialsSection = document.getElementById('materialsSection');
+                    const materialsToggle = document.querySelector('.materials-toggle');
+                    
+                    if (isMaterialsCollapsed) {
+                        materialsSection.classList.add('collapsed');
+                        materialsToggle.classList.add('collapsed');
+                    } else {
+                        materialsSection.classList.remove('collapsed');
+                        materialsToggle.classList.remove('collapsed');
+                    }
+                }
+                
+                // Update UI
+                const btn = document.getElementById('treeViewBtn');
+                btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
+                
+                if (nodes.length > 0) {
+                    recalculateLevels();
+                    renderAllNodes();
+                    updateSummary();
+                    
+                    // Clear empty state
+                    const emptyState = document.querySelector('.tree-canvas .empty-state');
+                    if (emptyState) {
+                        emptyState.remove();
+                    }
+                    
+                    // Only center camera if no saved camera state
+                    if (!savedCameraState) {
+                        centerCameraOnNodes();
+                    }
+                }
+                
+                // Update canvas transform with restored camera state
+                updateCanvasTransform();
+                
+                // Reset the flag after initial load
+                isInitialLoad = false;
+                
+            } catch (error) {
+                console.error('Error loading saved data:', error);
+                isInitialLoad = false;
+            }
+        }
+
+        // Get all unique item names from existing nodes
+        function getExistingItemNames() {
+            const names = new Set();
+            items.forEach(item => {
+                if (item.name) {
+                    names.add(item.name);
+                }
+            });
+            return Array.from(names).sort();
+        }
+
+        // Open name dropdown for a specific node
+        function openNameDropdown(nodeId) {
+            // Close any existing dropdown
+            closeNameDropdown();
+            
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            const nodeElement = document.getElementById(`node-${nodeId}`);
+            const nameButton = nodeElement.querySelector('.node-name');
+            const container = nodeElement.querySelector('.name-input-container');
+            
+            // Convert button to input field
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'name-input';
+            input.placeholder = 'Enter item name';
+            input.value = node.name || '';
+            
+            // Create dropdown
+            const dropdown = document.createElement('div');
+            dropdown.className = 'name-dropdown';
+            dropdown.id = `dropdown-${nodeId}`;
+            
+            // Store reference to input for filtering
+            dropdown.inputElement = input;
+            
+            // Replace button with input and dropdown
+            container.innerHTML = '';
+            container.appendChild(input);
+            container.appendChild(dropdown);
+            
+            // Now populate the dropdown after it's in the DOM
+            updateDropdownSuggestions(nodeId, node.name || '');
+            
+            // If there's an existing name, pre-select it in the dropdown
+            if (node.name) {
+                // Wait for the dropdown to be populated, then select the current name
+                setTimeout(() => {
+                    const items = dropdown.querySelectorAll('.name-dropdown-item');
+                    for (let i = 0; i < items.length; i++) {
+                        if (items[i].textContent === node.name) {
+                            dropdown.selectedIndex = i;
+                            items[i].classList.add('selected');
+                            break;
+                        }
+                    }
+                }, 10); // Small delay to ensure dropdown is rendered
+            }
+            
+            // Handle input events
+            input.oninput = () => {
+                updateDropdownSuggestions(nodeId, input.value);
+            };
+            
+            input.onkeydown = (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    const dropdown = document.getElementById(`dropdown-${nodeId}`);
+                    if (dropdown && dropdown.selectedIndex >= 0) {
+                        const selectedItems = dropdown.querySelectorAll('.name-dropdown-item:not(.new-item)');
+                        if (selectedItems[dropdown.selectedIndex]) {
+                            const selectedName = selectedItems[dropdown.selectedIndex].textContent;
+                            selectName(nodeId, selectedName);
+                            return;
+                        }
+                    }
+                    saveNodeName(nodeId, input.value);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    cancelNameEdit(nodeId);
+                } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    navigateDropdown(nodeId, 1);
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    navigateDropdown(nodeId, -1);
+                }
+            };
+            
+            input.onblur = () => {
+                // Use setTimeout to allow click events to process first
+                setTimeout(() => {
+                    // Don't save if a dropdown item is being clicked
+                    if (isDropdownItemBeingClicked) {
+                        return;
+                    }
+                    
+                    // Check if the dropdown still exists (might have been closed by selection)
+                    const currentDropdown = document.getElementById(`dropdown-${nodeId}`);
+                    if (!currentDropdown) {
+                        return; // Dropdown was closed by selection, don't save
+                    }
+                    
+                    // Check if the focus moved to a dropdown item
+                    const activeElement = document.activeElement;
+                    const isClickingDropdownItem = activeElement && activeElement.closest(`#dropdown-${nodeId}`);
+                    
+                    if (!isClickingDropdownItem && !currentDropdown.contains(activeElement)) {
+                        saveNodeName(nodeId, input.value);
+                    }
+                }, 150); // Increased timeout for better reliability
+            };
+            
+            openDropdownId = nodeId;
+            input.focus();
+            input.select();
+            
+            // Close dropdown when clicking outside
+            setTimeout(() => {
+                document.addEventListener('click', closeDropdownOnOutsideClick);
+            }, 0);
+        }
+
+        // Update dropdown suggestions based on input
+        function updateDropdownSuggestions(nodeId, searchText) {
+            const dropdown = document.getElementById(`dropdown-${nodeId}`);
+            if (!dropdown) {
+                return;
+            }
+            
+            const currentNode = nodes.find(n => n.id === nodeId);
+            const existingNames = getExistingItemNames();
+            
+            // Filter names that match the search text
+            const filteredNames = existingNames.filter(name => 
+                name.toLowerCase().includes(searchText.toLowerCase())
+            );
+            
+            // Always include the current node's name if it exists and matches the search
+            if (currentNode && currentNode.name) {
+                const currentNameMatches = currentNode.name.toLowerCase().includes(searchText.toLowerCase());
+                const currentNameInList = filteredNames.includes(currentNode.name);
+                
+                if (currentNameMatches && !currentNameInList) {
+                    filteredNames.unshift(currentNode.name); // Add to beginning
+                }
+            }
+            
+            // Clear dropdown
+            dropdown.innerHTML = '';
+            
+            // Add filtered suggestions
+            filteredNames.forEach(name => {
+                const item = document.createElement('div');
+                item.className = 'name-dropdown-item';
+                item.textContent = name;
+                
+                // Use mousedown instead of click for better reliability
+                item.onmousedown = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    isDropdownItemBeingClicked = true;
+                    
+                    // Use setTimeout to ensure the click is processed
+                    setTimeout(() => {
+                        selectName(nodeId, name);
+                        isDropdownItemBeingClicked = false;
+                    }, 0);
+                };
+                
+                // Also handle click as backup
+                item.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                };
+                
+                dropdown.appendChild(item);
+            });
+            
+            // If no suggestions and user has typed something, show "Press Enter to save"
+            if (filteredNames.length === 0 && searchText.trim()) {
+                const noMatchItem = document.createElement('div');
+                noMatchItem.className = 'name-dropdown-item new-item';
+                noMatchItem.textContent = 'Press Enter to save as new item';
+                noMatchItem.style.color = '#007acc';
+                noMatchItem.style.fontStyle = 'italic';
+                dropdown.appendChild(noMatchItem);
+            }
+            
+            // Reset selection
+            dropdown.selectedIndex = -1;
+        }
+
+        // Navigate dropdown with arrow keys
+        function navigateDropdown(nodeId, direction) {
+            const dropdown = document.getElementById(`dropdown-${nodeId}`);
+            if (!dropdown) return;
+            
+            const items = dropdown.querySelectorAll('.name-dropdown-item:not(.new-item)');
+            if (items.length === 0) return;
+            
+            if (dropdown.selectedIndex === undefined) {
+                dropdown.selectedIndex = -1;
+            }
+            
+            dropdown.selectedIndex += direction;
+            
+            if (dropdown.selectedIndex >= items.length) {
+                dropdown.selectedIndex = 0;
+            } else if (dropdown.selectedIndex < 0) {
+                dropdown.selectedIndex = items.length - 1;
+            }
+            
+            // Update visual selection
+            dropdown.querySelectorAll('.name-dropdown-item').forEach(item => {
+                item.classList.remove('selected');
+            });
+            
+            if (dropdown.selectedIndex >= 0 && dropdown.selectedIndex < items.length) {
+                items[dropdown.selectedIndex].classList.add('selected');
+                
+                // Update input value with selected item
+                const selectedItem = items[dropdown.selectedIndex];
+                const input = dropdown.inputElement;
+                if (input && selectedItem) {
+                    input.value = selectedItem.textContent;
+                }
+            }
+        }
+
+        // Save the node name
+        function saveNodeName(nodeId, name) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (node) {
+                const trimmedName = name.trim();
+                
+                if (trimmedName === '') {
+                    // Clear the node - make it empty
+                    clearNodeItem(nodeId);
+                    closeNameDropdown();
+                    return;
+                }
+                
+                // Check if this name matches an existing item
+                let existingItem = null;
+                for (const [, item] of items) {
+                    if (item.name === trimmedName) {
+                        existingItem = item;
+                        break;
+                    }
+                }
+
+                if (existingItem) {
+                    // Use existing item logic (same as selectName)
+                    selectName(nodeId, trimmedName);
+                } else {
+                    // Create new item via the setter
+                    node.name = trimmedName;
+                    closeNameDropdown();
+                    recalculateLevels();
+                    renderAllNodes();
+                    updateSummary();
+                    autoSave();
+                }
+            }
+        }
+
+        // Clear a node's item and make it empty
+        function clearNodeItem(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            // Remove all children
+            const childrenToRemove = getAllChildren(nodeId);
+            nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
+            node.children = [];
+            
+            // Clear the item reference
+            node.itemId = null;
+            node.isGhost = false;
+            node.originalParentId = null;
+            
+            // Sync all trees with the same parent item
+            if (node.parentId) {
+                syncAllTreesWithSameItem(nodeId);
+            }
+            
+            // Re-render
+            recalculateLevels();
+            renderAllNodes();
+            updateSummary();
+            autoSave(); // This will trigger cleanup
+        }
+
+        // Cancel name editing
+        function cancelNameEdit(nodeId) {
+            closeNameDropdown();
+            updateNodeDisplay(nodeId);
+        }
+
+        // Close dropdown when clicking outside
+        function closeDropdownOnOutsideClick(event) {
+            if (openDropdownId && !isDropdownItemBeingClicked && 
+                !event.target.closest(`#dropdown-${openDropdownId}`) && 
+                !event.target.closest(`#node-${openDropdownId} .name-input-container`)) {
+                const input = document.querySelector(`#node-${openDropdownId} .name-input`);
+                if (input) {
+                    saveNodeName(openDropdownId, input.value);
+                }
+            }
+        }
+
+        // Close the currently open dropdown
+        function closeNameDropdown() {
+            if (openDropdownId) {
+                const dropdown = document.getElementById(`dropdown-${openDropdownId}`);
+                if (dropdown) {
+                    dropdown.remove();
+                }
+                openDropdownId = null;
+                isDropdownItemBeingClicked = false; // Reset the flag
+                document.removeEventListener('click', closeDropdownOnOutsideClick);
+            }
+        }
+
+        // Select a name from the dropdown
+        function selectName(nodeId, name) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+
+            // Check if this name already exists as an item
+            let existingItem = null;
+            for (const [, item] of items) {
+                if (item.name === name) {
+                    existingItem = item;
+                    break;
+                }
+            }
+
+            if (existingItem) {
+                // If selecting an existing item, check for circular dependencies
+                if (node.parentId) {
+                    const parent = nodes.find(n => n.id === node.parentId);
+                    if (parent && parent.itemId) {
+                        if (existingItem.wouldCreateCircularWithParent(parent.itemId)) {
+                            // Create a ghost node instead
+                            node.itemId = existingItem.id;
+                            node.isGhost = true;
+                            node.originalParentId = parent.id; // Store reference to original parent
+                            
+                            // Sync quantity and notes from the original node (if exists)
+                            const originalNode = findOriginalNode(node);
+                            if (originalNode) {
+                                node.quantity = originalNode.quantity;
+                            }
+                            
+                            // Use the comprehensive sync system to handle ghost propagation
+                            syncAllTreesWithSameItem(node.id);
+                            
+                            closeNameDropdown();
+                            recalculateLevels();
+                            renderAllNodes();
+                            updateSummary();
+                            autoSave();
+                            return;
+                        } else {
+                            // If this was a ghost node, convert it back to normal
+                            const wasGhost = node.isGhost;
+                            node.isGhost = false;
+                            node.originalParentId = null;
+                            
+                            // If this was a ghost and now it's not, sync the change to other trees
+                            if (wasGhost) {
+                                syncAllTreesWithSameItem(node.id);
+                            }
+                        }
+                    }
+                } else {
+                    // Root node can't be ghost
+                    node.isGhost = false;
+                    node.originalParentId = null;
+                }
+
+                // Use existing item
+                node.itemId = existingItem.id;
+                
+                // If this node has a parent, add the item relationship
+                if (node.parentId && !node.isGhost) {
+                    const parent = nodes.find(n => n.id === node.parentId);
+                    if (parent && parent.itemId) {
+                        const parentItem = items.get(parent.itemId);
+                        if (parentItem) {
+                            parentItem.addChildItem(existingItem.id);
+                            
+                            // Sync all trees with the same parent item
+                            syncAllTreesWithSameItem(node.id);
+                        }
+                    }
+                }
+
+                // Create child nodes for this node based on the existing item's children (only if not ghost)
+                if (!node.isGhost) {
+                    syncChildNodesWithItem(node);
+                }
+            } else {
+                // Create new item
+                node.name = name; // This will create a new item via the setter
+            }
+
+            closeNameDropdown();
+            recalculateLevels();
+            renderAllNodes();
+            updateSummary();
+            autoSave();
+        }
+
+        // Show input field for new name (legacy function - no longer used)
+        function showNameInput(nodeId) {
+            // This function is no longer used with the new implementation
+            // Keeping it for backward compatibility but it's essentially a no-op
+        }
+
+        // Update the display of a node's name
+        function updateNodeDisplay(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            const nodeElement = document.getElementById(`node-${nodeId}`);
+            const container = nodeElement.querySelector('.name-input-container');
+            
+            // Restore the button structure
+            const displayName = node.name || 'Not Set';
+            const isNotSet = !node.name;
+            
+            container.innerHTML = `<button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${displayName}</button>`;
+        }
+
+        // Coordinate conversion functions
+        function toScreenX(xTrue) {
+            return (xTrue + offsetX) * scale;
+        }
+        
+        function toScreenY(yTrue) {
+            return (yTrue + offsetY) * scale;
+        }
+        
+        function toTrueX(xScreen) {
+            return (xScreen / scale) - offsetX;
+        }
+        
+        function toTrueY(yScreen) {
+            return (yScreen / scale) - offsetY;
+        }
+
+        function addRootNode() {
+            const container = document.getElementById('treeContainer');
+            
+            let centerX, centerY;
+            if (treeDirectionTopToBottom) {
+                centerX = (container.clientWidth - NODE_WIDTH) / 2;
+                centerY = (container.clientHeight - NODE_HEIGHT) / 2 - 150;
+            } else {
+                centerX = (container.clientWidth - NODE_WIDTH) / 2 - 150;
+                centerY = (container.clientHeight - NODE_HEIGHT) / 2;
+            }
+            
+            const node = new TreeNode(nextId++, null, 1, centerX, centerY);
+            nodes.push(node);
+            recalculateLevels();
+            renderAllNodes();
+            updateSummary();
+            autoSave();
+            
+            if (nodes.length === 1) {
+                lastTreeBounds = calculateTreeBounds();
+            }
+            
+            const emptyState = document.querySelector('.tree-canvas .empty-state');
+            if (emptyState) {
+                emptyState.remove();
+            }
+        }
+
+        function addChildNode(parentId) {
+            const parent = nodes.find(n => n.id === parentId);
+            if (!parent || !parent.itemId) return;
+
+            const parentPosBefore = { x: parent.x, y: parent.y };
+
+            // Create new node
+            const node = new TreeNode(nextId++, null, 1, parent.x, parent.y + 150, parentId);
+            
+            // If parent is completed, the new child should also be completed
+            if (parent.completed) {
+                node.completed = true;
+            }
+            
+            nodes.push(node);
+            parent.children.push(node.id);
+            
+            // Sync all trees with the same parent item
+            syncAllTreesWithSameItem(node.id);
+            
+            recalculateLevels();
+            renderAllNodes(parentId, parentPosBefore);
+            updateSummary();
+            autoSave();
+        }
+
+        const NODE_WIDTH = 220;
+        const NODE_HEIGHT = 120;
+        const H_SPACING = 25;
+        const V_SPACING = 200;
+
+        function layoutTree() {
+            if (nodes.length === 0) return;
+
+            // Clear cached subtree dimensions
+            nodes.forEach(n => {
+                n.subtreeWidth = undefined;
+                n.subtreeHeight = undefined;
+            });
+            
+            if (treeDirectionTopToBottom) {
+                nodes.forEach(n => calculateSubtreeWidth(n));
+
+                const rootNodes = nodes.filter(n => n.parentId === null);
+                let currentX = 0;
+                const groupSpacing = 150;
+
+                rootNodes.forEach(root => {
+                    setFinalPositions(root, currentX);
+                    currentX += root.subtreeWidth + groupSpacing;
+                });
+            } else {
+                nodes.forEach(n => calculateSubtreeHeight(n));
+
+                const rootNodes = nodes.filter(n => n.parentId === null);
+                let currentY = 0;
+                const groupSpacing = 150;
+
+                rootNodes.forEach(root => {
+                    setFinalPositions(root, currentY);
+                    currentY += root.subtreeHeight + groupSpacing;
+                });
+            }
+        }
+
+        function calculateSubtreeWidth(node) {
+            if (treeDirectionTopToBottom) {
+                if (node.subtreeWidth !== undefined) return;
+
+                if (node.children.length === 0) {
+                    node.subtreeWidth = NODE_WIDTH;
+                    return;
+                }
+
+                let childrenTotalSubtreeWidth = 0;
+                node.children.forEach(childId => {
+                    const child = nodes.find(n => n.id === childId);
+                    calculateSubtreeWidth(child);
+                    childrenTotalSubtreeWidth += child.subtreeWidth;
+                });
+
+                const childrenBlockWidth = childrenTotalSubtreeWidth + (node.children.length - 1) * H_SPACING;
+                node.subtreeWidth = Math.max(NODE_WIDTH, childrenBlockWidth);
+            } else {
+                // For left-to-right, we need to calculate height instead
+                calculateSubtreeHeight(node);
+            }
+        }
+
+        function calculateSubtreeHeight(node) {
+            if (node.subtreeHeight !== undefined) return;
+
+            if (node.children.length === 0) {
+                node.subtreeHeight = NODE_HEIGHT;
+                return;
+            }
+
+            let childrenTotalSubtreeHeight = 0;
+            node.children.forEach(childId => {
+                const child = nodes.find(n => n.id === childId);
+                calculateSubtreeHeight(child);
+                childrenTotalSubtreeHeight += child.subtreeHeight;
+            });
+
+            const childrenBlockHeight = childrenTotalSubtreeHeight + (node.children.length - 1) * V_SPACING;
+            node.subtreeHeight = Math.max(NODE_HEIGHT, childrenBlockHeight);
+        }
+
+        function setFinalPositions(node, startX) {
+            if (treeDirectionTopToBottom) {
+                // Original top-to-bottom layout
+                // First, position all children
+                if (node.children.length > 0) {
+                    const childrenBlockWidth = node.children.reduce((acc, id) => acc + nodes.find(n=>n.id===id).subtreeWidth, 0) + (node.children.length-1)*H_SPACING;
+                    let currentChildX = startX + (node.subtreeWidth - childrenBlockWidth) / 2;
+
+                    node.children.forEach(childId => {
+                        const child = nodes.find(n => n.id === childId);
+                        setFinalPositions(child, currentChildX);
+                        currentChildX += child.subtreeWidth + H_SPACING;
+                    });
+                }
+
+                // For parent nodes, center them between their immediate children
+                if (node.children.length > 0) {
+                    const firstChild = nodes.find(n => n.id === node.children[0]);
+                    const lastChild = nodes.find(n => n.id === node.children[node.children.length - 1]);
+                    
+                    if (firstChild && lastChild) {
+                        const firstChildCenter = firstChild.x + NODE_WIDTH / 2;
+                        const lastChildCenter = lastChild.x + NODE_WIDTH / 2;
+                        const childrenCenter = (firstChildCenter + lastChildCenter) / 2;
+                        
+                        // Center the parent between its immediate children
+                        node.x = childrenCenter - NODE_WIDTH / 2;
+                    }
+                } else {
+                    // Leaf nodes keep their calculated position
+                    const childrenBlockWidth = 0;
+                    const centeredStartX = startX + (node.subtreeWidth - Math.max(NODE_WIDTH, childrenBlockWidth)) / 2;
+                    node.x = centeredStartX + (Math.max(NODE_WIDTH, childrenBlockWidth) / 2) - (NODE_WIDTH / 2);
+                }
+                
+                node.y = node.level * V_SPACING;
+            } else {
+                // Left-to-right layout
+                // First, position all children
+                if (node.children.length > 0) {
+                    const childrenBlockHeight = node.children.reduce((acc, id) => acc + nodes.find(n=>n.id===id).subtreeHeight, 0) + (node.children.length-1)*V_SPACING;
+                    let currentChildY = startX + (node.subtreeHeight - childrenBlockHeight) / 2;
+
+                    node.children.forEach(childId => {
+                        const child = nodes.find(n => n.id === childId);
+                        setFinalPositions(child, currentChildY);
+                        currentChildY += child.subtreeHeight + V_SPACING;
+                    });
+                }
+
+                // For parent nodes, center them between their immediate children
+                if (node.children.length > 0) {
+                    const firstChild = nodes.find(n => n.id === node.children[0]);
+                    const lastChild = nodes.find(n => n.id === node.children[node.children.length - 1]);
+                    
+                    if (firstChild && lastChild) {
+                        const firstChildCenter = firstChild.y + NODE_HEIGHT / 2;
+                        const lastChildCenter = lastChild.y + NODE_HEIGHT / 2;
+                        const childrenCenter = (firstChildCenter + lastChildCenter) / 2;
+                        
+                        // Center the parent between its immediate children
+                        node.y = childrenCenter - NODE_HEIGHT / 2;
+                    }
+                } else {
+                    // Leaf nodes keep their calculated position
+                    const childrenBlockHeight = 0;
+                    const centeredStartY = startX + (node.subtreeHeight - Math.max(NODE_HEIGHT, childrenBlockHeight)) / 2;
+                    node.y = centeredStartY + (Math.max(NODE_HEIGHT, childrenBlockHeight) / 2) - (NODE_HEIGHT / 2);
+                }
+                
+                node.x = node.level * (NODE_WIDTH + 100);
+            }
+        }
+
+        function renderAllNodes(trackParentId = null, parentPosBefore = null) {
+            const canvas = document.getElementById('treeCanvas');
+            canvas.innerHTML = '';
+
+            // Store current bounds before layout
+            const oldBounds = calculateTreeBounds();
+            
+            layoutTree();
+
+            // Camera compensation logic
+            if (nodes.length > 0 && !isInitialLoad) {
+                if (trackParentId && parentPosBefore) {
+                    // Track specific parent node movement
+                    const parentAfter = nodes.find(n => n.id === trackParentId);
+                    if (parentAfter) {
+                        const deltaX = parentAfter.x - parentPosBefore.x;
+                        const deltaY = parentAfter.y - parentPosBefore.y;
+                        
+                        // Move camera to follow the parent node
+                        offsetX -= deltaX * scale;
+                        offsetY -= deltaY * scale;
+                    }
+                } else {
+                    // Default behavior: compensate for overall tree movement
+                    const newBounds = calculateTreeBounds();
+                    const deltaX = newBounds.minX - oldBounds.minX;
+                    const deltaY = newBounds.minY - oldBounds.minY;
+                    
+                    // Adjust camera to compensate for tree movement
+                    offsetX -= deltaX * scale;
+                    offsetY -= deltaY * scale;
+                    
+                    // Update the last known bounds
+                    lastTreeBounds = newBounds;
+                }
+                
+                updateCanvasTransform();
+            }
+
+            nodes.forEach(node => {
+                if (node.parentId) {
+                    const parent = nodes.find(n => n.id === node.parentId);
+                    if (parent) {
+                        renderConnection(parent, node);
+                    }
+                }
+            });
+
+            nodes.forEach(node => {
+                renderNode(node);
+            });
+            
+            // Update total needed displays after rendering all nodes
+            updateTotalNeededForAllNodes();
+        }
+
+        function renderNode(node) {
+            const canvas = document.getElementById('treeCanvas');
+            
+            const nodeElement = document.createElement('div');
+            nodeElement.className = `tree-node${node.isGhost ? ' ghost' : ''}`;
+            nodeElement.id = `node-${node.id}`;
+            nodeElement.style.left = `${node.x}px`;
+            nodeElement.style.top = `${node.y}px`;
+            
+            const displayName = node.name || 'Not Set';
+            const isNotSet = !node.name;
+            
+            // Determine button position based on tree direction
+            const addChildBtnClass = treeDirectionTopToBottom ? 'add-child-btn-bottom' : 'add-child-btn-right';
+            const tooltipClass = treeDirectionTopToBottom ? 'bottom' : 'right';
+            
+            // For ghost nodes, we show name (editable), delete button, and quantity
+            if (node.isGhost) {
+                nodeElement.innerHTML = `
+                    <div class="node-header">
+                        <div class="name-input-container">
+                            <button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${displayName}</button>
+                        </div>
+                        <button class="delete-btn" onclick="deleteNode(${node.id})">×</button>
+                    </div>
+                    <div class="node-quantity">
+                        <label>Qty:</label>
+                        <input type="number" value="${node.quantity}" min="1" 
+                               onchange="updateNodeQuantity(${node.id}, this.value)"
+                               onblur="handleQuantityBlur(${node.id}, this.value)">
+                        <span class="total-needed">Total: ${formatNumber(calculateTotalQuantity(node))}</span>
+                    </div>
+                    <div class="node-notes">
+                        <textarea placeholder="Add notes..." 
+                                  onchange="updateNodeNotes(${node.id}, this.value)"
+                                  onblur="handleNotesBlur(${node.id}, this.value)">${node.notes || ''}</textarea>
+                        <button class="notes-toggle ${node.useGlobalNotes ? 'global' : ''}" 
+                                onmousedown="event.preventDefault(); toggleNotesMode(${node.id})"
+                                title="${node.useGlobalNotes ? 'Using global notes (shared across all instances)' : 'Using local notes (specific to this node)'}">
+                            ${node.useGlobalNotes ? '🔗' : '📝'}
+                        </button>
+                    </div>
+                `;
+                
+                // Note: Circular connection lines removed for better UX
+            } else {
+                const isAddButtonDisabled = !node.itemId || !node.name;
+                const addButtonHtml = `
+                    <button class="add-child-btn ${addChildBtnClass} ${isAddButtonDisabled ? 'disabled' : ''}" 
+                            ${isAddButtonDisabled ? '' : 'onclick="addChildNode(' + node.id + ')"'}>
+                        +
+                        ${isAddButtonDisabled ? `
+                            <div class="tooltip ${tooltipClass}">
+                                Set an item name before adding child nodes
+                            </div>
+                        ` : ''}
+                    </button>
+                `;
+
+                nodeElement.innerHTML = `
+                    <div class="node-header">
+                        <div class="name-input-container">
+                            <button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${displayName}</button>
+                        </div>
+                        <button class="delete-btn" onclick="deleteNode(${node.id})">×</button>
+                    </div>
+                    <div class="node-quantity">
+                        <label>Qty:</label>
+                        <input type="number" value="${node.quantity}" min="1" 
+                               onchange="updateNodeQuantity(${node.id}, this.value)"
+                               onblur="handleQuantityBlur(${node.id}, this.value)">
+                        <span class="total-needed">Total: ${formatNumber(calculateTotalQuantity(node))}</span>
+                    </div>
+                    <div class="node-notes">
+                        <textarea placeholder="Add notes..." 
+                                  onchange="updateNodeNotes(${node.id}, this.value)"
+                                  onblur="handleNotesBlur(${node.id}, this.value)">${node.notes || ''}</textarea>
+                        <button class="notes-toggle ${node.useGlobalNotes ? 'global' : ''}" 
+                                onmousedown="event.preventDefault(); toggleNotesMode(${node.id})"
+                                title="${node.useGlobalNotes ? 'Using global notes (shared across all instances)' : 'Using local notes (specific to this node)'}">
+                            ${node.useGlobalNotes ? '🔗' : '📝'}
+                        </button>
+                    </div>
+                    <button class="node-complete ${node.completed ? '' : 'incomplete'}" 
+                            onclick="toggleComplete(${node.id})">
+                        ${node.completed ? 'Complete' : 'Incomplete'}
+                    </button>
+                    ${addButtonHtml}
+                `;
+            }
+            
+            canvas.appendChild(nodeElement);
+        }
+
+        // Removed renderCircularConnection function - no longer needed
+
+        function findOriginalNode(ghostNode) {
+            if (!ghostNode.isGhost || !ghostNode.itemId) return null;
+            
+            // Find the first non-ghost node with the same item
+            return nodes.find(n => 
+                n.itemId === ghostNode.itemId && 
+                !n.isGhost && 
+                n.id !== ghostNode.id
+            );
+        }
+
+        function renderConnection(parent, child) {
+            const canvas = document.getElementById('treeCanvas');
+            
+            if (treeDirectionTopToBottom) {
+                // Original top-to-bottom connections
+                const parentX = parent.x + NODE_WIDTH / 2;
+                const parentY = parent.y + NODE_HEIGHT;
+                const childX = child.x + NODE_WIDTH / 2;
+                const childY = child.y;
+                
+                // Calculate connection points with spacing
+                const verticalSpacing = 30; // Space between parent and turn point
+                const turnY = parentY + verticalSpacing;
+                
+                // Create vertical line from parent to turn point
+                const verticalLine = document.createElement('div');
+                verticalLine.className = 'connection-line';
+                verticalLine.id = `connection-vertical-${parent.id}-${child.id}`;
+                
+                const verticalLength = turnY - parentY;
+                verticalLine.style.left = `${parentX - 1}px`;
+                verticalLine.style.top = `${parentY}px`;
+                verticalLine.style.height = `${verticalLength}px`;
+                
+                // Create horizontal line from turn point to child
+                const horizontalLine = document.createElement('div');
+                horizontalLine.className = 'connection-line horizontal';
+                horizontalLine.id = `connection-horizontal-${parent.id}-${child.id}`;
+                
+                const horizontalLength = Math.abs(childX - parentX);
+                horizontalLine.style.left = `${Math.min(parentX, childX)}px`;
+                horizontalLine.style.top = `${turnY - 1}px`;
+                horizontalLine.style.width = `${horizontalLength}px`;
+                
+                // Create vertical line from turn point to child
+                const childVerticalLine = document.createElement('div');
+                childVerticalLine.className = 'connection-line';
+                childVerticalLine.id = `connection-child-vertical-${parent.id}-${child.id}`;
+                
+                const childVerticalLength = childY - turnY;
+                childVerticalLine.style.left = `${childX - 1}px`;
+                childVerticalLine.style.top = `${turnY}px`;
+                childVerticalLine.style.height = `${childVerticalLength}px`;
+                
+                canvas.appendChild(verticalLine);
+                canvas.appendChild(horizontalLine);
+                canvas.appendChild(childVerticalLine);
+            } else {
+                // Left-to-right connections
+                const parentX = parent.x + NODE_WIDTH;
+                const parentY = parent.y + NODE_HEIGHT / 2;
+                const childX = child.x;
+                const childY = child.y + NODE_HEIGHT / 2;
+                
+                // Calculate connection points with spacing
+                const horizontalSpacing = 30; // Space between parent and turn point
+                const turnX = parentX + horizontalSpacing;
+                
+                // Create horizontal line from parent to turn point
+                const horizontalLine = document.createElement('div');
+                horizontalLine.className = 'connection-line horizontal';
+                horizontalLine.id = `connection-horizontal-${parent.id}-${child.id}`;
+                
+                const horizontalLength = turnX - parentX;
+                horizontalLine.style.left = `${parentX}px`;
+                horizontalLine.style.top = `${parentY - 1}px`;
+                horizontalLine.style.width = `${horizontalLength}px`;
+                
+                // Create vertical line from turn point to child
+                const verticalLine = document.createElement('div');
+                verticalLine.className = 'connection-line';
+                verticalLine.id = `connection-vertical-${parent.id}-${child.id}`;
+                
+                const verticalLength = Math.abs(childY - parentY);
+                verticalLine.style.left = `${turnX - 1}px`;
+                verticalLine.style.top = `${Math.min(parentY, childY)}px`;
+                verticalLine.style.height = `${verticalLength}px`;
+                
+                // Create horizontal line from turn point to child
+                const childHorizontalLine = document.createElement('div');
+                childHorizontalLine.className = 'connection-line horizontal';
+                childHorizontalLine.id = `connection-child-horizontal-${parent.id}-${child.id}`;
+                
+                const childHorizontalLength = childX - turnX;
+                childHorizontalLine.style.left = `${turnX}px`;
+                childHorizontalLine.style.top = `${childY - 1}px`;
+                childHorizontalLine.style.width = `${childHorizontalLength}px`;
+                
+                canvas.appendChild(horizontalLine);
+                canvas.appendChild(verticalLine);
+                canvas.appendChild(childHorizontalLine);
+            }
+        }
+
+        function updateCanvasTransform() {
+            const canvas = document.getElementById('treeCanvas');
+            canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
+            
+            // Update background position to create infinite grid effect
+            const gridSize = 20;
+            const bgOffsetX = (offsetX * scale) % gridSize;
+            const bgOffsetY = (offsetY * scale) % gridSize;
+            const container = document.getElementById('treeContainer');
+            container.style.backgroundPosition = `${bgOffsetX}px ${bgOffsetY}px`;
+        }
+
+        function initCanvasDragging() {
+            const container = document.getElementById('treeContainer');
+
+            container.addEventListener('mousedown', (e) => {
+                if (e.target.closest('.tree-node') || e.target.closest('.zoom-controls')) return;
+                
+                // Blur any active input fields when clicking on canvas
+                const activeElement = document.activeElement;
+                if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+                    activeElement.blur();
+                }
+                
+                isDragging = true;
+                lastMousePos = { x: e.clientX, y: e.clientY };
+                container.style.cursor = 'grabbing';
+                e.preventDefault();
+            });
+
+            document.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - lastMousePos.x;
+                const deltaY = e.clientY - lastMousePos.y;
+                
+                offsetX += deltaX;
+                offsetY += deltaY;
+                
+                updateCanvasTransform();
+                
+                lastMousePos = { x: e.clientX, y: e.clientY };
+            });
+
+            document.addEventListener('mouseup', () => {
+                if (isDragging) {
+                    isDragging = false;
+                    container.style.cursor = 'grab';
+                    autoSave(); // Save camera state after dragging
+                }
+            });
+
+            // Add wheel zoom
+            container.addEventListener('wheel', (e) => {
+                // Check if cursor is over dropdowns or other interactive elements that should not trigger zoom
+                const target = e.target;
+                const isOverDropdown = target.closest('.name-dropdown') || 
+                                     target.closest('.name-input-container');
+                
+                if (isOverDropdown) {
+                    // Don't prevent default or zoom - let the dropdown handle its own scrolling
+                    return;
+                }
+                
+                e.preventDefault();
+                
+                const deltaY = e.deltaY;
+                const scaleAmount = -deltaY / 500;
+                const newScale = scale * (1 + scaleAmount);
+                
+                if (newScale >= 0.1 && newScale <= 5) {
+                    // Get the cursor position relative to the container
+                    const rect = container.getBoundingClientRect();
+                    const cursorX = e.clientX - rect.left;
+                    const cursorY = e.clientY - rect.top;
+                    
+                    // Convert cursor position to world coordinates before zoom
+                    const worldX = (cursorX - offsetX) / scale;
+                    const worldY = (cursorY - offsetY) / scale;
+                    
+                    // Apply zoom
+                    scale = newScale;
+                    
+                    // Adjust offset to keep the cursor position fixed
+                    offsetX = cursorX - worldX * scale;
+                    offsetY = cursorY - worldY * scale;
+                    
+                    updateCanvasTransform();
+                    autoSave(); // Save camera state after zooming
+                }
+            });
+        }
+
+        function centerOnNodes() {
+            if (nodes.length === 0) {
+                resetZoom();
+                return;
+            };
+            
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            
+            nodes.forEach(node => {
+                minX = Math.min(minX, node.x);
+                maxX = Math.max(maxX, node.x + NODE_WIDTH);
+                minY = Math.min(minY, node.y);
+                maxY = Math.max(maxY, node.y + NODE_HEIGHT);
+            });
+            
+            const treeWidth = maxX - minX;
+            const treeHeight = maxY - minY;
+            
+            const container = document.getElementById('treeContainer');
+            const containerRect = container.getBoundingClientRect();
+
+            const scaleX = containerRect.width / (treeWidth + 200);
+            const scaleY = containerRect.height / (treeHeight + 200);
+            scale = Math.min(2, scaleX, scaleY);
+            
+            const centerX = (containerRect.width - treeWidth * scale) / 2 - minX * scale;
+            const centerY = (containerRect.height - treeHeight * scale) / 2 - minY * scale;
+            
+            offsetX = centerX;
+            offsetY = centerY;
+            updateCanvasTransform();
+        }
+
+        function centerCameraOnNodes() {
+            if (nodes.length === 0) {
+                return;
+            }
+            
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            
+            nodes.forEach(node => {
+                minX = Math.min(minX, node.x);
+                maxX = Math.max(maxX, node.x + NODE_WIDTH);
+                minY = Math.min(minY, node.y);
+                maxY = Math.max(maxY, node.y + NODE_HEIGHT);
+            });
+            
+            const treeWidth = maxX - minX;
+            const treeHeight = maxY - minY;
+            
+            const container = document.getElementById('treeContainer');
+            const containerRect = container.getBoundingClientRect();
+            
+            // Calculate center position without changing zoom
+            const centerX = (containerRect.width - treeWidth * scale) / 2 - minX * scale;
+            const centerY = (containerRect.height - treeHeight * scale) / 2 - minY * scale;
+            
+            offsetX = centerX;
+            offsetY = centerY;
+            updateCanvasTransform();
+        }
+
+        function zoomIn() {
+            scale = Math.min(scale * 1.2, 5);
+            updateCanvasTransform();
+        }
+
+        function zoomOut() {
+            scale = Math.max(scale / 1.2, 0.1);
+            updateCanvasTransform();
+        }
+
+        function resetZoom() {
+            scale = 1;
+            offsetX = 0;
+            offsetY = 0;
+            updateCanvasTransform();
+        }
+
+        function toggleMaterials() {
+            const toggle = document.querySelector('.materials-toggle');
+            const section = document.getElementById('materialsSection');
+            
+            toggle.classList.toggle('collapsed');
+            section.classList.toggle('collapsed');
+            
+            // Save the state
+            autoSave();
+        }
+
+        function updateNodeQuantity(id, quantity) {
+            const node = nodes.find(n => n.id === id);
+            if (node) {
+                const parsedQuantity = parseInt(quantity) || 1;
+                const itemId = node.itemId;
+                
+                if (itemId && node.parentId) {
+                    // Find the parent node
+                    const parent = nodes.find(n => n.id === node.parentId);
+                    if (parent && parent.itemId) {
+                        // Update quantity for all nodes with the same item AND same parent item
+                        nodes.forEach(n => {
+                            if (n.itemId === itemId && n.parentId) {
+                                const nParent = nodes.find(p => p.id === n.parentId);
+                                if (nParent && nParent.itemId === parent.itemId) {
+                                    n.quantity = parsedQuantity;
+                                    
+                                    // Update the UI for this node
+                                    const nodeElement = document.getElementById(`node-${n.id}`);
+                                    if (nodeElement) {
+                                        const quantityInput = nodeElement.querySelector('input[type="number"]');
+                                        if (quantityInput) {
+                                            quantityInput.value = parsedQuantity;
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                        
+                        // Also update any ghost nodes with the same item
+                        nodes.forEach(n => {
+                            if (n.itemId === itemId && n.isGhost) {
+                                n.quantity = parsedQuantity;
+                                
+                                // Update the UI for ghost nodes
+                                const nodeElement = document.getElementById(`node-${n.id}`);
+                                if (nodeElement) {
+                                    const quantityInput = nodeElement.querySelector('input[type="number"]');
+                                    if (quantityInput) {
+                                        quantityInput.value = parsedQuantity;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                } else if (itemId) {
+                    // For root nodes (no parent), update all nodes with the same item
+                    node.quantity = parsedQuantity;
+                    const nodeElement = document.getElementById(`node-${node.id}`);
+                    if (nodeElement) {
+                        const quantityInput = nodeElement.querySelector('input[type="number"]');
+                        if (quantityInput) {
+                            quantityInput.value = parsedQuantity;
+                        }
+                    }
+                }
+                
+                updateSummary();
+                updateTotalNeededForAllNodes();
+                autoSave();
+            }
+        }
+
+        function handleQuantityBlur(id, quantity) {
+            updateNodeQuantity(id, quantity);
+        }
+
+        function updateNodeNotes(id, notes) {
+            const node = nodes.find(n => n.id === id);
+            if (node) {
+                node.notes = notes;
+                
+                // If using global notes, sync across all nodes with the same item
+                if (node.useGlobalNotes && node.itemId) {
+                    nodes.forEach(n => {
+                        if (n.itemId === node.itemId && n.useGlobalNotes && n.id !== id) {
+                            const nodeElement = document.getElementById(`node-${n.id}`);
+                            if (nodeElement) {
+                                const notesTextarea = nodeElement.querySelector('textarea');
+                                if (notesTextarea) {
+                                    notesTextarea.value = notes;
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                autoSave();
+            }
+        }
+
+        function toggleNotesMode(id) {
+            const node = nodes.find(n => n.id === id);
+            if (!node) return;
+            
+            // Toggle the mode
+            node.useGlobalNotes = !node.useGlobalNotes;
+            
+            // Update the button appearance and functionality
+            const nodeElement = document.getElementById(`node-${id}`);
+            if (nodeElement) {
+                const toggleButton = nodeElement.querySelector('.notes-toggle');
+                const textarea = nodeElement.querySelector('textarea');
+                
+                if (toggleButton && textarea) {
+                    // Update button appearance
+                    toggleButton.className = `notes-toggle ${node.useGlobalNotes ? 'global' : ''}`;
+                    toggleButton.innerHTML = node.useGlobalNotes ? '🔗' : '📝';
+                    toggleButton.title = node.useGlobalNotes ? 
+                        'Using global notes (shared across all instances)' : 
+                        'Using local notes (specific to this node)';
+                    
+                    // Update textarea content based on new mode
+                    textarea.value = node.notes || '';
+                    
+                    // Give focus back to the textarea so user can continue typing
+                    textarea.focus();
+                    
+                    // If switching to global mode and there are other nodes with the same item,
+                    // sync the current notes to all of them
+                    if (node.useGlobalNotes && node.itemId && textarea.value) {
+                        nodes.forEach(n => {
+                            if (n.itemId === node.itemId && n.useGlobalNotes && n.id !== id) {
+                                const otherNodeElement = document.getElementById(`node-${n.id}`);
+                                if (otherNodeElement) {
+                                    const otherTextarea = otherNodeElement.querySelector('textarea');
+                                    if (otherTextarea) {
+                                        otherTextarea.value = textarea.value;
+                                    }
+                                }
+                            }
+                        });
+                    }
+                }
+            }
+            
+            autoSave();
+        }
+
+        function handleNotesBlur(id, notes) {
+            updateNodeNotes(id, notes);
+        }
+
+        function toggleComplete(id) {
+            const node = nodes.find(n => n.id === id);
+            if (!node) return;
+            
+            const newCompletedState = !node.completed;
+            
+            // If marking as complete, also mark all children as complete
+            if (newCompletedState) {
+                markNodeAndChildrenComplete(id);
+            } else {
+                // If marking as incomplete, also mark all parents as incomplete
+                markNodeAndParentsIncomplete(id);
+            }
+            
+            // Update all affected nodes' display
+            updateAllAffectedNodes(id);
+            updateSummary();
+            autoSave();
+        }
+
+        // Mark a node and all its children as complete
+        function markNodeAndChildrenComplete(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            node.completed = true;
+            
+            // Mark all children as complete
+            node.children.forEach(childId => {
+                markNodeAndChildrenComplete(childId);
+            });
+        }
+
+        // Mark a node and all its parents as incomplete
+        function markNodeAndParentsIncomplete(nodeId) {
+            const node = nodes.find(n => n.id === nodeId);
+            if (!node) return;
+            
+            node.completed = false;
+            
+            // Mark all parents as incomplete
+            if (node.parentId) {
+                markNodeAndParentsIncomplete(node.parentId);
+            }
+        }
+
+        // Update the display of all nodes affected by completion changes
+        function updateAllAffectedNodes(startNodeId) {
+            const affectedNodes = new Set();
+            
+            // Get the starting node
+            const startNode = nodes.find(n => n.id === startNodeId);
+            if (!startNode) return;
+            
+            // Add the starting node
+            affectedNodes.add(startNodeId);
+            
+            // Add all children (if marking complete)
+            if (startNode.completed) {
+                const childrenToAdd = getAllChildren(startNodeId);
+                childrenToAdd.forEach(childId => affectedNodes.add(childId));
+            }
+            
+            // Add all parents (if marking incomplete)
+            if (!startNode.completed) {
+                let current = startNode;
+                while (current.parentId) {
+                    affectedNodes.add(current.parentId);
+                    current = nodes.find(n => n.id === current.parentId);
+                    if (!current) break;
+                }
+            }
+            
+            // Update display for all affected nodes
+            affectedNodes.forEach(nodeId => {
+                const node = nodes.find(n => n.id === nodeId);
+                if (node) {
+                    const button = document.querySelector(`#node-${nodeId} .node-complete`);
+                    if (button) {
+                        button.textContent = node.completed ? 'Complete' : 'Incomplete';
+                        button.classList.toggle('incomplete', !node.completed);
+                    }
+                }
+            });
+        }
+
+        function deleteNode(id) {
+            const node = nodes.find(n => n.id === id);
+            if (!node) return;
+
+            const childrenToRemove = getAllChildren(id);
+            childrenToRemove.push(id);
+
+            if (node.parentId) {
+                const parent = nodes.find(n => n.id === node.parentId);
+                if (parent) {
+                    parent.children = parent.children.filter(childId => childId !== id);
+                    
+                    // If this node has an item, remove corresponding nodes from other parents with the same item
+                    if (parent.itemId && node.itemId) {
+                        // Find all other parent nodes with the same item
+                        const otherParents = nodes.filter(n => 
+                            n.itemId === parent.itemId && 
+                            n.id !== parent.id && 
+                            !n.isGhost
+                        );
+                        
+                        // Remove corresponding child nodes from these parents
+                        otherParents.forEach(otherParent => {
+                            const correspondingChild = otherParent.children.find(childId => {
+                                const child = nodes.find(n => n.id === childId);
+                                return child && child.itemId === node.itemId;
+                            });
+                            
+                            if (correspondingChild) {
+                                const correspondingChildNode = nodes.find(n => n.id === correspondingChild);
+                                if (correspondingChildNode) {
+                                    const correspondingChildrenToRemove = getAllChildren(correspondingChild);
+                                    correspondingChildrenToRemove.push(correspondingChild);
+                                    
+                                    // Remove from parent's children array
+                                    otherParent.children = otherParent.children.filter(childId => childId !== correspondingChild);
+                                    
+                                    // Add to removal list
+                                    correspondingChildrenToRemove.forEach(childId => {
+                                        if (!childrenToRemove.includes(childId)) {
+                                            childrenToRemove.push(childId);
+                                        }
+                                    });
+                                }
+                            }
+                        });
+                        
+                        // Remove the item relationship if this was the last instance
+                        const remainingNodes = nodes.filter(n => 
+                            !childrenToRemove.includes(n.id) && 
+                            n.itemId === node.itemId && 
+                            n.parentId && 
+                            nodes.find(p => p.id === n.parentId)?.itemId === parent.itemId
+                        );
+                        
+                        if (remainingNodes.length === 0) {
+                            const parentItem = items.get(parent.itemId);
+                            if (parentItem) {
+                                parentItem.removeChildItem(node.itemId);
+                            }
+                        }
+                    }
+                }
+            }
+
+            nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
+
+            // Sync all trees with the same parent item if the deleted node had a parent
+            if (node.parentId) {
+                const parent = nodes.find(n => n.id === node.parentId);
+                if (parent && parent.itemId) {
+                    // Find any remaining child to trigger sync from
+                    if (parent.children.length > 0) {
+                        const remainingChild = nodes.find(n => n.id === parent.children[0]);
+                        if (remainingChild) {
+                            syncAllTreesWithSameItem(remainingChild.id);
+                        }
+                    } else {
+                        // No children left, sync empty state
+                        const otherParents = nodes.filter(n => 
+                            n.itemId === parent.itemId && 
+                            n.id !== parent.id && 
+                            !n.isGhost
+                        );
+                        otherParents.forEach(otherParent => {
+                            // Remove all children from other parents too
+                            const otherChildrenToRemove = [];
+                            otherParent.children.forEach(childId => {
+                                const allDescendants = getAllChildren(childId);
+                                allDescendants.push(childId);
+                                otherChildrenToRemove.push(...allDescendants);
+                            });
+                            nodes = nodes.filter(n => !otherChildrenToRemove.includes(n.id));
+                            otherParent.children = [];
+                        });
+                    }
+                }
+            }
+
+            recalculateLevels();
+            renderAllNodes();
+            updateSummary();
+            autoSave(); // This will trigger cleanup
+            
+            if (nodes.length === 0) {
+                const canvas = document.getElementById('treeCanvas');
+                canvas.innerHTML = '<div class="empty-state">Click "Add Root Node" to start building your recipe tree</div>';
+            }
+        }
+
+        function recalculateLevels() {
+            nodes.forEach(node => {
+                if (node.parentId === null) {
+                    node.level = 0;
+                }
+            });
+            
+            let changed = true;
+            while (changed) {
+                changed = false;
+                nodes.forEach(node => {
+                    if (node.parentId !== null) {
+                        const parent = nodes.find(n => n.id === node.parentId);
+                        if (parent && node.level !== parent.level + 1) {
+                            node.level = parent.level + 1;
+                            changed = true;
+                        }
+                    }
+                });
+            }
+        }
+
+        function getAllChildren(parentId) {
+            const children = [];
+            const toProcess = [parentId];
+            while(toProcess.length > 0) {
+                const currentId = toProcess.shift();
+                const node = nodes.find(n => n.id === currentId);
+                if (node) {
+                    node.children.forEach(childId => {
+                        children.push(childId);
+                        toProcess.push(childId);
+                    });
+                }
+            }
+            return children;
+        }
+
+        function updateSummary() {
+            const container = document.getElementById('summaryContainer');
+            const materialsSection = document.getElementById('materialsSection');
+            const leafNodes = getLeafNodes();
+            
+            if (leafNodes.length === 0) {
+                container.innerHTML = '<div class="empty-state">Add nodes to see required materials</div>';
+                materialsSection.classList.add('empty');
+                return;
+            }
+
+            const summary = {};
+            
+            leafNodes.forEach(node => {
+                // Skip nodes with no name set or completed nodes
+                if (!node.name || node.name === 'Not Set' || node.completed) {
+                    return;
+                }
+                
+                const totalQuantity = calculateTotalQuantity(node);
+                if (summary[node.name]) {
+                    summary[node.name] += totalQuantity;
+                } else {
+                    summary[node.name] = totalQuantity;
+                }
+            });
+
+            if (Object.keys(summary).length === 0) {
+                container.innerHTML = '<div class="empty-state">Set names for nodes to see required materials</div>';
+                materialsSection.classList.add('empty');
+                return;
+            }
+
+            // Remove empty class when there are materials to display
+            materialsSection.classList.remove('empty');
+
+            // Convert to array and sort by name for consistent ordering
+            const sortedItems = Object.entries(summary).sort(([a], [b]) => a.localeCompare(b));
+
+            container.innerHTML = sortedItems
+                .map(([name, quantity]) => `
+                    <div class="summary-item">
+                        <div class="summary-item-number">${formatNumber(quantity)}</div>
+                        <div class="summary-item-name">${name}</div>
+                    </div>
+                `).join('');
+        }
+
+        function getLeafNodes() {
+            return nodes.filter(node => node.children.length === 0);
+        }
+
+        function calculateTotalQuantity(node) {
+            let total = node.quantity;
+            let current = node;
+            
+            while (current.parentId) {
+                const parent = nodes.find(n => n.id === current.parentId);
+                if (parent) {
+                    total *= parent.quantity;
+                    current = parent;
+                } else {
+                    break;
+                }
+            }
+            
+            return total;
+        }
+
+        function calculateTreeBounds() {
+            if (nodes.length === 0) return { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+            
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            
+            nodes.forEach(node => {
+                minX = Math.min(minX, node.x);
+                maxX = Math.max(maxX, node.x + NODE_WIDTH);
+                minY = Math.min(minY, node.y);
+                maxY = Math.max(maxY, node.y + NODE_HEIGHT);
+            });
+            
+            return { minX, maxX, minY, maxY };
+        }
+
+        function compensateCameraForLayoutChange() {
+            const newBounds = calculateTreeBounds();
+            
+            // Calculate the shift in tree position
+            const deltaX = newBounds.minX - lastTreeBounds.minX;
+            const deltaY = newBounds.minY - lastTreeBounds.minY;
+            
+            // Adjust camera to compensate for tree movement
+            offsetX -= deltaX * scale;
+            offsetY -= deltaY * scale;
+            
+            // Update the last known bounds
+            lastTreeBounds = newBounds;
+            
+            updateCanvasTransform();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCanvasDragging();
+            autoLoad();
+        });
+
+        // Tree View Toggle Function
+        function toggleTreeView() {
+            treeDirectionTopToBottom = !treeDirectionTopToBottom;
+            const btn = document.getElementById('treeViewBtn');
+            btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
+            
+            // Re-render the tree with new direction
+            if (nodes.length > 0) {
+                renderAllNodes();
+            }
+            autoSave();
+        }
+
+        // Reset Tree Function
+        function resetTree() {
+            if (confirm('Are you sure you want to reset the entire tree? This will delete all nodes.')) {
+                nodes = [];
+                items.clear(); // Clear all items since no nodes exist
+                nextId = 1;
+                nextItemId = 1;
+                selectedNode = null;
+                offsetX = 0;
+                offsetY = 0;
+                scale = 1;
+                lastTreeBounds = { minX: 0, maxX: 0, minY: 0, maxY: 0 };
+                
+                const canvas = document.getElementById('treeCanvas');
+                canvas.innerHTML = '<div class="empty-state">Click "Add Root Node" to start building your recipe tree</div>';
+                
+                updateSummary();
+                updateCanvasTransform();
+                autoSave(); // This will save the reset state
+            }
+        }
+
+        // Share Tree Function
+        function shareTree() {
+            const treeData = {
+                nodes: nodes.map(node => ({
+                    id: node.id,
+                    itemId: node.itemId,
+                    quantity: node.quantity,
+                    x: node.x,
+                    y: node.y,
+                    parentId: node.parentId,
+                    completed: node.completed,
+                    children: node.children,
+                    level: node.level,
+                    isGhost: node.isGhost,
+                    localNotes: node.localNotes,
+                    useGlobalNotes: node.useGlobalNotes
+                })),
+                items: Array.from(items.entries()).map(([id, item]) => ({
+                    id: id,
+                    name: item.name,
+                    childItems: Array.from(item.childItems),
+                    defaultQuantity: item.defaultQuantity,
+                    notes: item.notes
+                })),
+                nextId: nextId,
+                nextItemId: nextItemId,
+                treeDirection: treeDirectionTopToBottom
+            };
+            
+            // Generate all content formats
+            generateMaterialsList();
+            generateASCIITreeView();
+            
+            const jsonString = JSON.stringify(treeData, null, 2);
+            const textarea = document.getElementById('shareTextarea');
+            textarea.value = jsonString;
+            
+            const modal = document.getElementById('modalOverlay');
+            modal.style.display = 'flex';
+        }
+
+        // Switch between tabs
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.modal-tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.modal-tab-content').forEach(content => content.classList.remove('active'));
+            document.querySelectorAll('.modal-tab-buttons').forEach(buttons => buttons.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            document.querySelector(`.modal-tab[onclick="switchTab('${tabName}')"]`).classList.add('active');
+            document.getElementById(`${tabName}Tab`).classList.add('active');
+            document.getElementById(`${tabName}Buttons`).classList.add('active');
+        }
+
+        // Generate materials list with ASCII art formatting
+        function generateMaterialsList() {
+            const leafNodes = getLeafNodes();
+            const summary = {};
+            
+            leafNodes.forEach(node => {
+                if (!node.name || node.name === 'Not Set' || node.completed) {
+                    return;
+                }
+                
+                const totalQuantity = calculateTotalQuantity(node);
+                if (summary[node.name]) {
+                    summary[node.name] += totalQuantity;
+                } else {
+                    summary[node.name] = totalQuantity;
+                }
+            });
+
+            if (Object.keys(summary).length === 0) {
+                document.getElementById('materialsTextarea').value = 'No materials required (all items completed or no names set)';
+                return;
+            }
+
+            // Sort by name for consistent ordering
+            const sortedItems = Object.entries(summary).sort(([a], [b]) => a.localeCompare(b));
+            
+            let materialsText = '';
+            materialsText += '╔══════════════════════════════════════════════════════════════╗\n';
+            materialsText += '║                    REQUIRED MATERIALS                        ║\n';
+            materialsText += '╠══════════════════════════════════════════════════════════════╣\n';
+            
+            sortedItems.forEach(([name, quantity], index) => {
+                const isLast = index === sortedItems.length - 1;
+                const borderChar = isLast ? '║' : '║';
+                const endBorderChar = isLast ? '║' : '║';
+                
+                const limitedName = name.length > 50 ? name.substring(0, 50) + '...' : name;
+                const formattedQuantity = formatNumber(quantity);
+                const quantityWithX = `${formattedQuantity}x`;
+                const namePadding = 59 - quantityWithX.length;
+                materialsText += `${borderChar} ${quantityWithX} ${limitedName.padEnd(namePadding)} ${endBorderChar}\n`;
+            });
+            
+            materialsText += '╚══════════════════════════════════════════════════════════════╝\n';
+            
+            document.getElementById('materialsTextarea').value = materialsText;
+        }
+
+        // Generate ASCII tree view
+        function generateASCIITreeView() {
+            if (nodes.length === 0) {
+                document.getElementById('treeTextarea').value = 'No nodes in tree';
+                return;
+            }
+
+            let treeText = '';
+            treeText += '╔══════════════════════════════════════════════════════════════╗\n';
+            treeText += '║                      RECIPE TREE VIEW                        ║\n';
+            treeText += '╚══════════════════════════════════════════════════════════════╝\n\n';
+
+            const rootNodes = nodes.filter(n => n.parentId === null);
+            
+            rootNodes.forEach((root, rootIndex) => {
+                treeText += generateNodeTree(root, '', rootIndex === rootNodes.length - 1);
+            });
+
+            document.getElementById('treeTextarea').value = treeText;
+        }
+
+        // Recursively generate ASCII tree for a node and its children
+        function generateNodeTree(node, prefix, isLast) {
+			const limitedName = node.name.length > 50 ? node.name.substring(0, 50) + '...' : node.name;
+            const displayName = limitedName || 'Not Set';
+            const totalQuantity = calculateTotalQuantity(node);
+            const status = node.completed ? '[✓]' : '[ ]';
+            
+            let result = '';
+            result += `${prefix}${isLast ? '└── ' : '├── '}${status} ${displayName}\n`;
+            result += `${prefix}${isLast ? '    ' : '│   '}    Qty: ${formatNumber(node.quantity)} | Total: ${formatNumber(totalQuantity)}\n`;
+            
+            if (node.notes && node.notes.trim()) {
+                const notesLines = node.notes.split('\n');
+                notesLines.forEach(line => {
+                    if (line.trim()) {
+                        result += `${prefix}${isLast ? '    ' : '│   '}    Note: ${line.trim()}\n`;
+                    }
+                });
+            }
+            
+            const children = nodes.filter(n => n.parentId === node.id);
+            children.forEach((child, childIndex) => {
+                const childIsLast = childIndex === children.length - 1;
+                const childPrefix = prefix + (isLast ? '    ' : '│   ');
+                result += generateNodeTree(child, childPrefix, childIsLast);
+            });
+            
+            return result;
+        }
+
+        // Copy content from active tab
+        function copyActiveTab() {
+            const activeTab = document.querySelector('.modal-tab.active');
+            let textarea;
+            
+            if (activeTab.textContent === 'Materials List') {
+                textarea = document.getElementById('materialsTextarea');
+            } else if (activeTab.textContent === 'Tree View') {
+                textarea = document.getElementById('treeTextarea');
+            } else {
+                textarea = document.getElementById('shareTextarea');
+            }
+            
+            textarea.select();
+            textarea.setSelectionRange(0, 99999);
+            
+            try {
+                document.execCommand('copy');
+                alert('Content copied to clipboard!');
+            } catch (err) {
+                navigator.clipboard.writeText(textarea.value).then(() => {
+                    alert('Content copied to clipboard!');
+                }).catch(() => {
+                    alert('Failed to copy to clipboard. Please select and copy manually.');
+                });
+            }
+        }
+
+        // Download content from active tab
+        function downloadActiveTab() {
+            const activeTab = document.querySelector('.modal-tab.active');
+            let textarea, filename, mimeType;
+            
+            if (activeTab.textContent === 'Materials List') {
+                textarea = document.getElementById('materialsTextarea');
+                filename = 'materials-list.txt';
+                mimeType = 'text/plain';
+            } else if (activeTab.textContent === 'Tree View') {
+                textarea = document.getElementById('treeTextarea');
+                filename = 'recipe-tree-view.txt';
+                mimeType = 'text/plain';
+            } else {
+                textarea = document.getElementById('shareTextarea');
+                filename = 'recipe-tree.json';
+                mimeType = 'application/json';
+            }
+            
+            const dataStr = textarea.value;
+            const dataBlob = new Blob([dataStr], {type: mimeType});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = filename;
+            link.click();
+        }
+
+        // Close Modal Function
+        function closeModal() {
+            const modal = document.getElementById('modalOverlay');
+            modal.style.display = 'none';
+        }
+
+        // Copy to Clipboard Function (legacy - now handled by copyActiveTab)
+        function copyToClipboard() {
+            copyActiveTab();
+        }
+
+        // Download JSON Function (legacy - now handled by downloadActiveTab)
+        function downloadJSON() {
+            downloadActiveTab();
+        }
+
+        // Apply JSON Function
+        function applyJSON() {
+            const textarea = document.getElementById('shareTextarea');
+            const jsonString = textarea.value.trim();
+            
+            if (!jsonString) {
+                alert('Please enter valid JSON data.');
+                return;
+            }
+            
+            try {
+                const treeData = JSON.parse(jsonString);
+                
+                if (!treeData.nodes || !Array.isArray(treeData.nodes) || !treeData.items || !Array.isArray(treeData.items)) {
+                    alert('Invalid JSON format. Expected "nodes" and "items" arrays.');
+                    return;
+                }
+                
+                // Clear existing data
+                nodes = [];
+                items.clear();
+                
+                // Load items first
+                treeData.items.forEach(itemData => {
+                    const item = new Item(itemData.id, itemData.name);
+                    item.defaultQuantity = itemData.defaultQuantity;
+                    item.notes = itemData.notes;
+                    items.set(item.id, item);
+                });
+                
+                // Then restore child relationships
+                treeData.items.forEach(itemData => {
+                    const item = items.get(itemData.id);
+                    if (item) {
+                        itemData.childItems.forEach(childId => {
+                            if (items.has(childId)) {
+                                item.childItems.add(childId);
+                            }
+                        });
+                    }
+                });
+                
+                // Load nodes
+                treeData.nodes.forEach(nodeData => {
+                    const node = new TreeNode(
+                        nodeData.id,
+                        nodeData.itemId,
+                        nodeData.quantity,
+                        nodeData.x,
+                        nodeData.y,
+                        nodeData.parentId
+                    );
+                    node.completed = nodeData.completed;
+                    node.children = nodeData.children;
+                    node.level = nodeData.level;
+                    node.isGhost = nodeData.isGhost;
+                    node.localNotes = nodeData.localNotes || '';
+                    node.useGlobalNotes = nodeData.useGlobalNotes !== undefined ? nodeData.useGlobalNotes : true;
+                    nodes.push(node);
+                });
+                
+                // Update IDs
+                nextId = treeData.nextId || Math.max(...nodes.map(n => n.id), 0) + 1;
+                nextItemId = treeData.nextItemId || Math.max(...Array.from(items.keys()), 0) + 1;
+                treeDirectionTopToBottom = treeData.treeDirection !== false;
+                
+                // Update UI
+                const btn = document.getElementById('treeViewBtn');
+                btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
+                
+                // Set flag to prevent camera compensation during JSON load
+                isInitialLoad = true;
+                
+                recalculateLevels();
+                renderAllNodes();
+                updateSummary();
+                autoSave();
+                
+                // Reset the flag after JSON load
+                isInitialLoad = false;
+                
+                closeModal();
+                alert('Recipe tree loaded successfully!');
+                
+            } catch (error) {
+                alert('Invalid JSON format: ' + error.message);
+                isInitialLoad = false;
+            }
+        }
+
+        // Save/Load Function (placeholder for future implementation)
+        function saveLoadData() {
+            openSaveLoadModal();
+        }
+
+        // Close modal when clicking outside
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('modalOverlay');
+            const saveLoadModal = document.getElementById('saveLoadModalOverlay');
+            
+            if (e.target === modal) {
+                closeModal();
+            }
+            if (e.target === saveLoadModal) {
+                closeSaveLoadModal();
+            }
+        });
+
+        // Get saved presets from localStorage
+        function getSavedPresets() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEYS.SAVED_PRESETS);
+                return saved ? JSON.parse(saved) : [];
+            } catch (error) {
+                console.error('Error loading presets:', error);
+                return [];
+            }
+        }
+
+        // Save presets to localStorage
+        function savePresetsToStorage(presets) {
+            try {
+                localStorage.setItem(STORAGE_KEYS.SAVED_PRESETS, JSON.stringify(presets));
+            } catch (error) {
+                console.error('Error saving presets:', error);
+            }
+        }
+
+        // Save current recipe as a preset
+        function savePreset() {
+            const nameInput = document.getElementById('presetNameInput');
+            const presetName = nameInput.value.trim();
+            
+            if (!presetName) {
+                alert('Please enter a name for the preset.');
+                return;
+            }
+            
+            const presets = getSavedPresets();
+            
+            // Check if name already exists
+            if (presets.some(p => p.name === presetName)) {
+                if (!confirm(`A preset named "${presetName}" already exists. Do you want to overwrite it?`)) {
+                    return;
+                }
+                // Remove existing preset with same name
+                presets.splice(presets.findIndex(p => p.name === presetName), 1);
+            }
+            
+            const treeData = {
+                nodes: nodes,
+                nextId: nextId,
+                treeDirection: treeDirectionTopToBottom
+            };
+            
+            const newPreset = {
+                name: presetName,
+                data: treeData,
+                date: new Date().toISOString()
+            };
+            
+            presets.push(newPreset);
+            savePresetsToStorage(presets);
+            
+            nameInput.value = '';
+            loadPresetsList();
+            alert(`Preset "${presetName}" saved successfully!`);
+        }
+
+        // Load a preset
+        function loadPreset(presetName) {
+            const presets = getSavedPresets();
+            const preset = presets.find(p => p.name === presetName);
+            
+            if (!preset) {
+                alert('Preset not found.');
+                return;
+            }
+            
+            if (confirm(`Are you sure you want to load the preset "${presetName}"? This will replace your current recipe tree.`)) {
+                const treeData = preset.data;
+                
+                nodes = treeData.nodes || [];
+                nextId = treeData.nextId || 1;
+                treeDirectionTopToBottom = treeData.treeDirection !== false;
+                
+                // Update UI
+                const btn = document.getElementById('treeViewBtn');
+                btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
+                
+                // Set flag to prevent camera compensation during preset load
+                isInitialLoad = true;
+                
+                recalculateLevels();
+                renderAllNodes();
+                updateSummary();
+                autoSave();
+                
+                // Reset the flag after preset load
+                isInitialLoad = false;
+                
+                closeSaveLoadModal();
+                alert(`Preset "${presetName}" loaded successfully!`);
+            }
+        }
+
+        // Share a preset
+        function sharePreset(presetName) {
+            const presets = getSavedPresets();
+            const preset = presets.find(p => p.name === presetName);
+            
+            if (!preset) {
+                alert('Preset not found.');
+                return;
+            }
+            
+            // Temporarily set the current tree data to the preset data for generation
+            const originalNodes = nodes;
+            const originalNextId = nextId;
+            const originalTreeDirection = treeDirectionTopToBottom;
+            
+            nodes = preset.data.nodes || [];
+            nextId = preset.data.nextId || 1;
+            treeDirectionTopToBottom = preset.data.treeDirection !== false;
+            
+            // Generate all content formats
+            generateMaterialsList();
+            generateASCIITreeView();
+            
+            const jsonString = JSON.stringify(preset.data, null, 2);
+            const textarea = document.getElementById('shareTextarea');
+            textarea.value = jsonString;
+            
+            // Restore original data
+            nodes = originalNodes;
+            nextId = originalNextId;
+            treeDirectionTopToBottom = originalTreeDirection;
+            
+            // Close save/load modal and open share modal
+            closeSaveLoadModal();
+            const modal = document.getElementById('modalOverlay');
+            modal.style.display = 'flex';
+        }
+
+        // Delete a preset
+        function deletePreset(presetName) {
+            if (confirm(`Are you sure you want to delete the preset "${presetName}"?`)) {
+                const presets = getSavedPresets();
+                const updatedPresets = presets.filter(p => p.name !== presetName);
+                savePresetsToStorage(updatedPresets);
+                loadPresetsList();
+                alert(`Preset "${presetName}" deleted successfully!`);
+            }
+        }
+
+        // Load and display the presets list
+        function loadPresetsList() {
+            const presetsList = document.getElementById('presetsList');
+            const presets = getSavedPresets();
+            
+            if (presets.length === 0) {
+                presetsList.innerHTML = '<div class="empty-presets">No saved presets yet</div>';
+                return;
+            }
+            
+            // Sort presets by date (newest first)
+            presets.sort((a, b) => new Date(b.date) - new Date(a.date));
+            
+            presetsList.innerHTML = presets.map(preset => {
+                const date = new Date(preset.date);
+                const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+                
+                return `
+                    <div class="preset-item">
+                        <div class="preset-header">
+                            <div>
+                                <div class="preset-name">${preset.name}</div>
+                                <div class="preset-date">${formattedDate}</div>
+                            </div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn load" onclick="loadPreset('${preset.name}')">Load</button>
+                                <button class="preset-btn share" onclick="sharePreset('${preset.name}')">Share</button>
+                                <button class="preset-btn delete" onclick="deletePreset('${preset.name}')">Delete</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Open Save/Load modal
+        function openSaveLoadModal() {
+            const modal = document.getElementById('saveLoadModalOverlay');
+            modal.style.display = 'flex';
+            loadPresetsList();
+        }
+
+        // Close Save/Load modal
+        function closeSaveLoadModal() {
+            const modal = document.getElementById('saveLoadModalOverlay');
+            modal.style.display = 'none';
+        }
+
+        // Update total needed display for all nodes
+        function updateTotalNeededForAllNodes() {
+            nodes.forEach(node => {
+                const nodeElement = document.getElementById(`node-${node.id}`);
+                if (nodeElement) {
+                    const totalNeededElement = nodeElement.querySelector('.total-needed');
+                    if (totalNeededElement) {
+                        totalNeededElement.textContent = `${formatNumber(calculateTotalQuantity(node))}`;
+                    }
+                }
+            });
+        }
+
+        // Handle rename action
+        function handleRename(action) {
+            const modal = document.getElementById('renameModal');
+            const nodeId = parseInt(modal.dataset.nodeId);
+            const newName = modal.dataset.newName;
+            const node = nodes.find(n => n.id === nodeId);
+            
+            if (!node || !node.item) {
+                closeRenameModal();
+                return;
+            }
+
+            if (action === 'keep') {
+                // Keep the existing recipe and update the name
+                node.item.name = newName;
+            } else if (action === 'clear') {
+                // Get all child nodes to remove
+                const childrenToRemove = getAllChildren(nodeId);
+                
+                // Remove all child nodes from the nodes array
+                nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
+                
+                // Clear the node's children array
+                node.children = [];
+                
+                // Create a new item with the new name
+                const newItem = new Item(nextItemId++, newName);
+                items.set(newItem.id, newItem);
+                node.itemId = newItem.id;
+            } else {
+                // Cancel - revert the name in the dropdown
+                closeNameDropdown();
+            }
+
+            closeRenameModal();
+            recalculateLevels(); // Recalculate levels after removing nodes
+            renderAllNodes();
+            updateSummary();
+            autoSave(); // This will trigger cleanup of unused items
+        }
+
+        // Close rename modal
+        function closeRenameModal() {
+            const modal = document.getElementById('renameModal');
+            modal.style.display = 'none';
+            modal.dataset.nodeId = '';
+            modal.dataset.newName = '';
+        }
+
+        // Sync child nodes with an item's recipe
+        function syncChildNodesWithItem(node) {
+            if (!node.itemId) return;
+            
+            const item = items.get(node.itemId);
+            if (!item) return;
+
+            // Clear existing children for this node
+            const childrenToRemove = getAllChildren(node.id);
+            nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
+            node.children = [];
+
+            // Create child nodes based on the item's recipe
+            let childY = node.y + (treeDirectionTopToBottom ? 150 : 0);
+            let childX = node.x + (treeDirectionTopToBottom ? 0 : 300);
+            
+            for (const childItemId of item.childItems) {
+                const childItem = items.get(childItemId);
+                if (childItem) {
+                    const childNode = new TreeNode(
+                        nextId++, 
+                        childItemId, 
+                        childItem.defaultQuantity, 
+                        childX, 
+                        childY, 
+                        node.id
+                    );
+                    
+                    nodes.push(childNode);
+                    node.children.push(childNode.id);
+                    
+                    // Recursively create child nodes for this child
+                    syncChildNodesWithItem(childNode);
+                    
+                    // Update position for next child
+                    if (treeDirectionTopToBottom) {
+                        childY += 150;
+                    } else {
+                        childY += 150;
+                    }
+                }
+            }
+        }
+
+        // Sync a new child node across all parent nodes of the same item
+        function syncChildNodeAcrossParents(originalParentId, originalChildNode) {
+            const originalParent = nodes.find(n => n.id === originalParentId);
+            if (!originalParent || !originalParent.itemId) return;
+
+            // Find all other nodes with the same parent item
+            const parentNodes = nodes.filter(n => 
+                n.itemId === originalParent.itemId && 
+                n.id !== originalParent.id && 
+                !n.isGhost
+            );
+            
+            parentNodes.forEach(parentNode => {
+                // Check if this parent already has a child with the same item (or empty child)
+                const existingChild = parentNode.children.find(childId => {
+                    const child = nodes.find(n => n.id === childId);
+                    if (!child) return false;
+                    
+                    // Match by item (including null for empty nodes)
+                    return child.itemId === originalChildNode.itemId;
+                });
+                
+                if (!existingChild) {
+                    // Create a new child node (copy all properties)
+                    const childNode = new TreeNode(
+                        nextId++,
+                        originalChildNode.itemId,
+                        originalChildNode.quantity,
+                        parentNode.x,
+                        parentNode.y + 150,
+                        parentNode.id
+                    );
+                    
+                    // Copy additional properties
+                    childNode.completed = originalChildNode.completed;
+                    childNode.isGhost = originalChildNode.isGhost;
+                    childNode.originalParentId = originalChildNode.originalParentId;
+                    
+                    nodes.push(childNode);
+                    parentNode.children.push(childNode.id);
+                    
+                    // If the original child has children, recursively sync them too
+                    originalChildNode.children.forEach(grandchildId => {
+                        const grandchild = nodes.find(n => n.id === grandchildId);
+                        if (grandchild) {
+                            syncChildNodeAcrossParents(childNode.id, grandchild);
+                        }
+                    });
+                }
+            });
+        }
+
+        // Comprehensive synchronization - ensures all trees with the same item stay in sync
+        function syncAllTreesWithSameItem(sourceNodeId) {
+            const sourceNode = nodes.find(n => n.id === sourceNodeId);
+            if (!sourceNode || !sourceNode.parentId) return;
+            
+            const sourceParent = nodes.find(n => n.id === sourceNode.parentId);
+            if (!sourceParent || !sourceParent.itemId) return;
+            
+            // Find all other parent nodes with the same item
+            const otherParents = nodes.filter(n => 
+                n.itemId === sourceParent.itemId && 
+                n.id !== sourceParent.id && 
+                !n.isGhost
+            );
+            
+            // For each other parent, ensure it has the same tree structure
+            otherParents.forEach(otherParent => {
+                syncTreeStructure(sourceParent, otherParent);
+            });
+        }
+
+        // Sync the complete tree structure between two parent nodes
+        function syncTreeStructure(sourceParent, targetParent) {
+            // Get all children of source parent
+            const sourceChildren = sourceParent.children.map(id => nodes.find(n => n.id === id)).filter(n => n);
+            
+            // Get all children of target parent
+            const targetChildren = targetParent.children.map(id => nodes.find(n => n.id === id)).filter(n => n);
+            
+            // Remove children from target that don't exist in source
+            const childrenToRemove = [];
+            targetChildren.forEach(targetChild => {
+                const matchingSource = sourceChildren.find(sourceChild => 
+                    (sourceChild.itemId === targetChild.itemId && sourceChild.isGhost === targetChild.isGhost) || 
+                    (sourceChild.itemId === null && targetChild.itemId === null)
+                );
+                
+                if (!matchingSource) {
+                    const allDescendants = getAllChildren(targetChild.id);
+                    allDescendants.push(targetChild.id);
+                    childrenToRemove.push(...allDescendants);
+                    targetParent.children = targetParent.children.filter(id => id !== targetChild.id);
+                }
+            });
+            
+            // Remove the nodes
+            nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
+            
+            // Add/update children in target to match source
+            sourceChildren.forEach(sourceChild => {
+                let targetChild = targetChildren.find(tc => 
+                    (tc.itemId === sourceChild.itemId && tc.isGhost === sourceChild.isGhost) || 
+                    (tc.itemId === null && sourceChild.itemId === null)
+                );
+                
+                if (!targetChild) {
+                    // Create new child node
+                    targetChild = new TreeNode(
+                        nextId++,
+                        sourceChild.itemId,
+                        sourceChild.quantity,
+                        targetParent.x,
+                        targetParent.y + 150,
+                        targetParent.id
+                    );
+                    
+                    // Copy all properties
+                    targetChild.completed = sourceChild.completed;
+                    targetChild.isGhost = sourceChild.isGhost;
+                    targetChild.originalParentId = sourceChild.originalParentId;
+                    targetChild.localNotes = sourceChild.localNotes;
+                    targetChild.useGlobalNotes = sourceChild.useGlobalNotes;
+                    
+                    nodes.push(targetChild);
+                    targetParent.children.push(targetChild.id);
+                } else {
+                    // Update existing child to match source
+                    targetChild.itemId = sourceChild.itemId;
+                    targetChild.quantity = sourceChild.quantity;
+                    targetChild.completed = sourceChild.completed;
+                    targetChild.isGhost = sourceChild.isGhost;
+                    targetChild.originalParentId = sourceChild.originalParentId;
+                    targetChild.localNotes = sourceChild.localNotes;
+                    targetChild.useGlobalNotes = sourceChild.useGlobalNotes;
+                    
+                    // If converting to/from ghost, handle children appropriately
+                    if (sourceChild.isGhost && !targetChild.isGhost) {
+                        // Converting to ghost - remove children
+                        const childrenToRemove = getAllChildren(targetChild.id);
+                        nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
+                        targetChild.children = [];
+                    } else if (!sourceChild.isGhost && targetChild.isGhost) {
+                        // Converting from ghost - will handle children in recursive call below
+                        targetChild.children = [];
+                    }
+                }
+                
+                // Recursively sync children
+                if (sourceChild.children.length > 0) {
+                    syncTreeStructure(sourceChild, targetChild);
+                }
+            });
+        }
+
+                 // Sync ghost status across all corresponding nodes in other parent trees
+         function syncGhostStatusAcrossParents(ghostNode) {
+             if (!ghostNode.parentId || !ghostNode.itemId) return;
+             
+             const parent = nodes.find(n => n.id === ghostNode.parentId);
+             if (!parent || !parent.itemId) return;
+             
+             // Find all other parent nodes with the same item
+             const otherParents = nodes.filter(n => 
+                 n.itemId === parent.itemId && 
+                 n.id !== parent.id && 
+                 !n.isGhost
+             );
+             
+             // For each other parent, find the corresponding child and convert it to ghost
+             otherParents.forEach(otherParent => {
+                 // Find the child that should become a ghost (matching the original before it became ghost)
+                 // We need to find the child that has the same item as what the ghost node WILL BE
+                 const correspondingChild = otherParent.children.find(childId => {
+                     const child = nodes.find(n => n.id === childId);
+                     // Look for the child that would create the same circular dependency
+                     if (!child || !child.itemId) return false;
+                     
+                     // Check if this child would create the same circular dependency
+                     const childItem = items.get(child.itemId);
+                     return childItem && childItem.wouldCreateCircularWithParent(otherParent.itemId);
+                 });
+                 
+                 if (correspondingChild) {
+                     const childNode = nodes.find(n => n.id === correspondingChild);
+                     if (childNode && !childNode.isGhost) {
+                         // Convert this child to the same ghost item
+                         childNode.itemId = ghostNode.itemId;
+                         childNode.isGhost = true;
+                         childNode.originalParentId = otherParent.id;
+                         
+                         // Sync quantity from the original ghost node
+                         childNode.quantity = ghostNode.quantity;
+                         
+                         // Remove any children this node might have had (ghosts don't have children)
+                         const childrenToRemove = getAllChildren(childNode.id);
+                         nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
+                         childNode.children = [];
+                     }
+                 } else {
+                     // If no existing child to convert, create a new ghost child
+                     const newGhostChild = new TreeNode(
+                         nextId++,
+                         ghostNode.itemId,
+                         ghostNode.quantity,
+                         otherParent.x,
+                         otherParent.y + 150,
+                         otherParent.id
+                     );
+                     
+                     newGhostChild.isGhost = true;
+                     newGhostChild.originalParentId = otherParent.id;
+                     newGhostChild.completed = ghostNode.completed;
+                     
+                     nodes.push(newGhostChild);
+                     otherParent.children.push(newGhostChild.id);
+                 }
+             });
+         }
+
+         // Sync non-ghost status (convert ghost back to regular) across all corresponding nodes
+         function syncNonGhostStatusAcrossParents(regularNode) {
+             if (!regularNode.parentId || !regularNode.itemId) return;
+             
+             const parent = nodes.find(n => n.id === regularNode.parentId);
+             if (!parent || !parent.itemId) return;
+             
+             // Find all other parent nodes with the same item
+             const otherParents = nodes.filter(n => 
+                 n.itemId === parent.itemId && 
+                 n.id !== parent.id && 
+                 !n.isGhost
+             );
+             
+             // For each other parent, find the corresponding ghost child and convert it back
+             otherParents.forEach(otherParent => {
+                 const correspondingChild = otherParent.children.find(childId => {
+                     const child = nodes.find(n => n.id === childId);
+                     return child && child.itemId === regularNode.itemId && child.isGhost;
+                 });
+                 
+                 if (correspondingChild) {
+                     const childNode = nodes.find(n => n.id === correspondingChild);
+                     if (childNode) {
+                         // Convert ghost back to regular node
+                         childNode.isGhost = false;
+                         childNode.originalParentId = null;
+                         
+                         // Sync quantity
+                         childNode.quantity = regularNode.quantity;
+                         
+                         // Add back any children this item should have
+                         const item = items.get(regularNode.itemId);
+                         if (item && item.childItems.size > 0) {
+                             syncChildNodesWithItem(childNode);
+                         }
+                     }
+                 }
+             });
+         }
+
+         // Legacy function for backward compatibility
+         function syncChildItemAcrossParents(parentItemId, childItemId) {
+             // Find any parent with this item and trigger full sync
+             const parentNode = nodes.find(n => n.itemId === parentItemId && !n.isGhost);
+             if (parentNode && parentNode.children.length > 0) {
+                 const firstChild = nodes.find(n => n.id === parentNode.children[0]);
+                 if (firstChild) {
+                     syncAllTreesWithSameItem(firstChild.id);
+                 }
+             }
+         }
+
+        // Close rename modal when clicking outside
+        document.addEventListener('click', (e) => {
+            const modal = document.getElementById('renameModal');
+            if (e.target === modal) {
+                handleRename('cancel');
+            }
+        });
+    </script>
+</body>
+</html>
