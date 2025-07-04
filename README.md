@@ -157,7 +157,15 @@ The application uses CSS custom properties for easy theming:
 
 ---
 
-**Made with ❤️ for crafters, planners, and organizers everywhere!** 
+### Support
+
+**Made with ❤️ for crafters, planners, and organizers everywhere!**
+
+If you find UCRP helpful and want to support continued development, consider buying me a coffee! ☕
+
+[![Ko-Fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/norway174)
+
+Every contribution helps keep this project free and open-source for everyone to enjoy! 
 
 FYI, the whole project. Including this ReadMe is "vibe coded" with AI. lol.  
 It works tho! Enjoy!
