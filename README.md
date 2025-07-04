@@ -2,9 +2,11 @@
 
 A powerful, visual crafting recipe planner that helps you organize complex crafting trees for games, projects, or any hierarchical recipe system. Built as a single-page web application with an intuitive node-based interface and automatic layout system.
 
+### [Click here to access the UCRP Online!](https://norway174.github.io/UCRP/UCRP.html)
+
 ![UCRP Interface](https://iili.io/Fckn6va.png)
 
-## 🚀 Features
+## ✨ Features
 
 ### Visual Tree Builder
 - **Interactive Canvas**: Pan and zoom to navigate your recipe trees with smooth camera controls
@@ -33,17 +35,11 @@ A powerful, visual crafting recipe planner that helps you organize complex craft
 
 ## 📋 Getting Started
 
-### Installation
-
-1. **Download the HTML file**:
-   ```bash
-   git clone https://github.com/yourusername/universal-crafting-recipe-planner.git
-   cd universal-crafting-recipe-planner
-   ```
-
-2. **Open in browser**:
-   - Simply open `UCRP.html` in any modern web browser
-   - No server or additional dependencies required!
+### 💾 Download for Offline Use
+1. **Right-click** on this link: [UCRP.html](https://norway174.github.io/UCRP/UCRP.html)
+2. **Select "Save As"** or "Save Link As"
+3. **Open the downloaded file** in any modern web browser
+4. **You're ready to go!** - Works completely offline
 
 ### Basic Usage
 
