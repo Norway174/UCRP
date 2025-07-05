@@ -10,6 +10,26 @@ Recipe Tree Viewer
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Crafting Recipe Planner</title>
     <style>
+        :root {
+            --bg-primary: #1e1e1e;
+            --bg-secondary: #2d2d30;
+            --bg-tertiary: #252526;
+            --accent-color: #007acc;
+            --accent-color-hover: #005a9e;
+            --text-primary: #cccccc;
+            --text-secondary: #999999;
+            --text-muted: #6a6a6a;
+            --border-color: #3c3c3c;
+            --border-color-hover: #4c4c4c;
+            --success-color: #4CAF50;
+            --success-color-hover: #45a049;
+            --warning-color: #ff9800;
+            --danger-color: #d73a49;
+            --danger-color-hover: #b31d28;
+            --info-color: #2aafc7;
+            --info-color-light: #1f889b;
+        }
+
         * {
             margin: 0;
             padding: 0;
@@ -18,11 +38,11 @@ Recipe Tree Viewer
 
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #1e1e1e;
+            background: var(--bg-primary);
             min-height: 100vh;
             margin: 0;
             padding: 0;
-            color: #cccccc;
+            color: var(--text-primary);
             overflow: hidden;
         }
 
@@ -42,7 +62,7 @@ Recipe Tree Viewer
             overflow: hidden;
             cursor: grab;
             background-image: 
-                radial-gradient(circle at 1px 1px, #3c3c3c 1px, transparent 0);
+                radial-gradient(circle at 1px 1px, var(--border-color) 1px, transparent 0);
             background-size: 20px 20px;
             background-position: 0 0;
             transform-origin: 0 0;
@@ -76,11 +96,11 @@ Recipe Tree Viewer
             top: 20px;
             left: 20px;
             width: 350px;
-            background: #252526;
+            background: var(--bg-tertiary);
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
             pointer-events: auto;
             max-height: calc(100vh - 40px);
             overflow-y: auto;
@@ -92,12 +112,12 @@ Recipe Tree Viewer
             right: 20px;
             width: 300px;
             max-height: calc(100vh - 40px);
-            background: #252526;
+            background: var(--bg-tertiary);
             border-radius: 8px;
             padding: 20px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             overflow-y: auto;
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
             pointer-events: auto;
         }
 
@@ -107,17 +127,17 @@ Recipe Tree Viewer
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 2px solid #3c3c3c;
+            border-bottom: 2px solid var(--border-color);
         }
 
         .header h1 {
-            color: #cccccc;
+            color: var(--text-primary);
             font-size: 24px;
             font-weight: 600;
         }
 
         .add-root-btn {
-            background: #007acc;
+            background: var(--accent-color);
             color: white;
             border: none;
             padding: 12px 24px;
@@ -130,15 +150,15 @@ Recipe Tree Viewer
         }
 
         .add-root-btn:hover {
-            background: #005a9e;
+            background: var(--accent-color-hover);
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(0, 122, 204, 0.4);
         }
 
         .tree-node {
             position: absolute;
-            background: #2d2d30;
-            border: 1px solid #3c3c3c;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 15px;
             min-width: 220px;
@@ -150,12 +170,12 @@ Recipe Tree Viewer
         }
 
         .tree-node:hover {
-            border-color: #007acc;
+            border-color: var(--accent-color);
             box-shadow: 0 6px 20px rgba(0,0,0,0.4);
         }
 
         .tree-node.selected {
-            border-color: #007acc;
+            border-color: var(--accent-color);
             box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3);
         }
 
@@ -168,7 +188,7 @@ Recipe Tree Viewer
 
         .node-name {
             font-weight: 600;
-            color: #cccccc;
+            color: var(--text-primary);
             font-size: 14px;
             border: none;
             background: transparent;
@@ -181,11 +201,11 @@ Recipe Tree Viewer
         }
 
         .node-name:hover {
-            background-color: #3c3c3c;
+            background-color: var(--border-color);
         }
 
         .node-name.not-set {
-            color: #6a6a6a;
+            color: var(--text-muted);
             font-style: italic;
         }
 
@@ -194,8 +214,8 @@ Recipe Tree Viewer
             top: 100%;
             left: 0;
             right: 0;
-            background: #2d2d30;
-            border: 1px solid #3c3c3c;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             z-index: 1000;
@@ -206,12 +226,12 @@ Recipe Tree Viewer
         .name-dropdown-item {
             padding: 8px 12px;
             cursor: pointer;
-            border-bottom: 1px solid #3c3c3c;
+            border-bottom: 1px solid var(--border-color);
             transition: background-color 0.2s ease;
         }
 
         .name-dropdown-item:hover {
-            background-color: #3c3c3c;
+            background-color: var(--border-color);
         }
 
         .name-dropdown-item:last-child {
@@ -219,12 +239,12 @@ Recipe Tree Viewer
         }
 
         .name-dropdown-item.new-item {
-            color: #007acc;
+            color: var(--accent-color);
             font-weight: 600;
         }
 
         .name-dropdown-item.selected {
-            background-color: #007acc;
+            background-color: var(--accent-color);
             color: white;
         }
 
@@ -236,20 +256,20 @@ Recipe Tree Viewer
         .name-input {
             width: 100%;
             padding: 4px 6px;
-            border: 1px solid #007acc;
+            border: 1px solid var(--accent-color);
             border-radius: 3px;
-            background: #1e1e1e;
-            color: #cccccc;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             font-size: 14px;
             outline: none;
         }
 
         .name-input:focus {
-            border-color: #005a9e;
+            border-color: var(--accent-color-hover);
         }
 
         .node-complete {
-            background: #4CAF50;
+            background: var(--success-color);
             color: white;
             border: none;
             padding: 4px 8px;
@@ -260,7 +280,7 @@ Recipe Tree Viewer
         }
 
         .node-complete.incomplete {
-            background: #ff9800;
+            background: var(--warning-color);
         }
 
         .node-complete:hover {
@@ -277,26 +297,26 @@ Recipe Tree Viewer
         .node-quantity input {
             width: 60px;
             padding: 5px;
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             text-align: center;
-            background: #1e1e1e;
-            color: #cccccc;
+            background: var(--bg-primary);
+            color: var(--text-primary);
         }
 
         .node-quantity input:focus {
             outline: none;
-            border-color: #007acc;
+            border-color: var(--accent-color);
         }
 
         .node-quantity label {
             font-size: 12px;
-            color: #999999;
+            color: var(--text-secondary);
         }
 
         .total-needed {
             font-size: 12px;
-            color: #2aafc7;
+            color: var(--info-color);
             font-weight: 600;
             padding: 2px 6px;
             border-radius: 3px;
@@ -306,7 +326,7 @@ Recipe Tree Viewer
 
 		.total-needed::before {
 			content: "Total: ";
-            color: #1f889b;
+            color: var(--info-color-light);
 			font-size: 10px;
 			font-style: italic;
 		}
@@ -323,7 +343,7 @@ Recipe Tree Viewer
             border: 1px solid transparent;
             border-radius: 3px;
             background: transparent;
-            color: #999999;
+            color: var(--text-secondary);
             font-size: 11px;
             font-family: inherit;
             resize: none;
@@ -337,7 +357,7 @@ Recipe Tree Viewer
             right: 2px;
             width: 16px;
             height: 16px;
-            background: #3c3c3c;
+            background: var(--border-color);
             border: 1px solid #555;
             border-radius: 3px;
             cursor: pointer;
@@ -345,19 +365,19 @@ Recipe Tree Viewer
             align-items: center;
             justify-content: center;
             font-size: 10px;
-            color: #cccccc;
+            color: var(--text-primary);
             transition: all 0.2s ease;
             z-index: 10;
         }
 
         .notes-toggle:hover {
-            background: #4c4c4c;
-            border-color: #007acc;
+            background: var(--border-color-hover);
+            border-color: var(--accent-color);
         }
 
         .notes-toggle.global {
-            color: #007acc;
-            border-color: #007acc;
+            color: var(--accent-color);
+            border-color: var(--accent-color);
         }
 
         .node-notes textarea:focus + .notes-toggle {
@@ -365,20 +385,20 @@ Recipe Tree Viewer
         }
 
         .node-notes textarea:focus {
-            border-color: #3c3c3c;
-            background: #1e1e1e;
-            color: #cccccc;
+            border-color: var(--border-color);
+            background: var(--bg-primary);
+            color: var(--text-primary);
         }
 
         .node-notes textarea::placeholder {
-            color: #6a6a6a;
+            color: var(--text-muted);
             font-style: italic;
         }
 
         .add-child-btn {
             width: 30px;
             height: 30px;
-            background: #007acc;
+            background: var(--accent-color);
             color: white;
             border: none;
             border-radius: 50%;
@@ -408,26 +428,26 @@ Recipe Tree Viewer
 
         .add-child-btn-bottom:hover:not(.disabled) {
             transform: translateX(-50%) scale(1.1);
-            background: #005a9e;
+            background: var(--accent-color-hover);
             box-shadow: 0 6px 15px rgba(0, 122, 204, 0.4);
         }
 
         .add-child-btn-right:hover:not(.disabled) {
             transform: translateY(-50%) scale(1.1);
-            background: #005a9e;
+            background: var(--accent-color-hover);
             box-shadow: 0 6px 15px rgba(0, 122, 204, 0.4);
         }
 
         .add-child-btn.disabled {
-            background: #2d2d30;
+            background: var(--bg-secondary);
             color: #666;
             cursor: default;
             box-shadow: none;
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
         }
 
         .add-child-btn.disabled:hover {
-            background: #2d2d30 !important;
+            background: var(--bg-secondary) !important;
         }
 
         .add-child-btn.disabled.add-child-btn-bottom {
@@ -441,8 +461,8 @@ Recipe Tree Viewer
         /* Custom Tooltip */
         .tooltip {
             position: absolute;
-            background: #252526;
-            color: #cccccc;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
             padding: 8px 12px;
             border-radius: 4px;
             font-size: 12px;
@@ -452,7 +472,7 @@ Recipe Tree Viewer
             opacity: 0;
             transition: opacity 0.2s ease, visibility 0.2s ease;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
             pointer-events: none;
             z-index: 1000;
         }
@@ -476,7 +496,7 @@ Recipe Tree Viewer
             bottom: 100%;
             left: 50%;
             transform: translateX(-50%);
-            border-color: transparent transparent #3c3c3c transparent;
+            border-color: transparent transparent var(--border-color) transparent;
         }
 
         /* Right tooltip */
@@ -490,7 +510,7 @@ Recipe Tree Viewer
             right: 100%;
             top: 50%;
             transform: translateY(-50%);
-            border-color: transparent #3c3c3c transparent transparent;
+            border-color: transparent var(--border-color) transparent transparent;
         }
 
         /* Show tooltip on hover for disabled buttons */
@@ -501,7 +521,7 @@ Recipe Tree Viewer
 
         .connection-line {
             position: absolute;
-            background: #3c3c3c;
+            background: var(--border-color);
             width: 2px;
             transform-origin: 0 0;
         }
@@ -512,19 +532,19 @@ Recipe Tree Viewer
         }
 
         .right-panel h2 {
-            color: #cccccc;
+            color: var(--text-primary);
             margin-bottom: 15px;
             font-size: 18px;
             font-weight: 600;
         }
 
         .summary-item {
-            background: #2d2d30;
+            background: var(--bg-secondary);
             border-radius: 4px;
             padding: 8px 12px;
             margin-bottom: 6px;
-            border-left: 3px solid #007acc;
-            border: 1px solid #3c3c3c;
+            border-left: 3px solid var(--accent-color);
+            border: 1px solid var(--border-color);
             display: flex;
             align-items: center;
             gap: 12px;
@@ -532,7 +552,7 @@ Recipe Tree Viewer
         }
 
         .summary-item-number {
-            color: #007acc;
+            color: var(--accent-color);
             font-weight: 600;
             font-size: 20px;
             min-width: 20px;
@@ -555,25 +575,25 @@ Recipe Tree Viewer
 
         .summary-item-name {
             font-weight: 500;
-            color: #cccccc;
+            color: var(--text-primary);
             flex: 1;
         }
 
         .summary-item-quantity {
-            color: #999999;
+            color: var(--text-secondary);
             font-size: 12px;
             font-weight: 500;
         }
 
         .empty-state {
             text-align: center;
-            color: #6a6a6a;
+            color: var(--text-muted);
             font-style: italic;
             margin-top: 50px;
         }
 
         .delete-btn {
-            background: #d73a49;
+            background: var(--danger-color);
             color: white;
             border: none;
             padding: 4px 8px;
@@ -585,7 +605,7 @@ Recipe Tree Viewer
         }
 
         .delete-btn:hover {
-            background: #b31d28;
+            background: var(--danger-color-hover);
             transform: scale(1.05);
         }
 
@@ -600,25 +620,25 @@ Recipe Tree Viewer
         }
 
         .zoom-btn {
-            background: #2d2d30;
-            border: 1px solid #3c3c3c;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-radius: 4px;
             padding: 5px 10px;
             cursor: pointer;
             font-size: 16px;
             font-weight: bold;
-            color: #cccccc;
+            color: var(--text-primary);
             transition: all 0.3s ease;
         }
 
         .zoom-btn:hover {
-            background: #3c3c3c;
-            border-color: #007acc;
+            background: var(--border-color);
+            border-color: var(--accent-color);
         }
 
         .materials-toggle {
-            background: #3c3c3c;
-            color: #cccccc;
+            background: var(--border-color);
+            color: var(--text-primary);
             border: none;
             padding: 8px 12px;
             border-radius: 4px;
@@ -634,7 +654,7 @@ Recipe Tree Viewer
         }
 
         .materials-toggle:hover {
-            background: #4c4c4c;
+            background: var(--border-color-hover);
         }
 
         .materials-toggle .toggle-icon {
@@ -647,7 +667,7 @@ Recipe Tree Viewer
 
         .materials-section {
             margin-top: 15px;
-            border-top: 1px solid #3c3c3c;
+            border-top: 1px solid var(--border-color);
             padding-top: 15px;
             transition: all 0.3s ease;
             overflow: hidden;
@@ -689,17 +709,17 @@ Recipe Tree Viewer
         }
 
         .materials-section::-webkit-scrollbar-track {
-            background: #1e1e1e;
+            background: var(--bg-primary);
             border-radius: 4px;
         }
 
         .materials-section::-webkit-scrollbar-thumb {
-            background: #3c3c3c;
+            background: var(--border-color);
             border-radius: 4px;
         }
 
         .materials-section::-webkit-scrollbar-thumb:hover {
-            background: #4c4c4c;
+            background: var(--border-color-hover);
         }
 
         .control-buttons {
@@ -707,13 +727,13 @@ Recipe Tree Viewer
             gap: 8px;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #3c3c3c;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .control-btn {
-            background: #2d2d30;
-            color: #cccccc;
-            border: 1px solid #3c3c3c;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
             padding: 8px 12px;
             border-radius: 4px;
             cursor: pointer;
@@ -733,8 +753,8 @@ Recipe Tree Viewer
         }
 
         .control-btn:hover {
-            background: #3c3c3c;
-            border-color: #007acc;
+            background: var(--border-color);
+            border-color: var(--accent-color);
         }
 
         .modal-overlay {
@@ -751,14 +771,14 @@ Recipe Tree Viewer
         }
 
         .modal {
-            background: #252526;
+            background: var(--bg-tertiary);
             border-radius: 8px;
             padding: 24px;
             max-width: 600px;
             width: 90%;
             max-height: 80vh;
             overflow-y: auto;
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
 
@@ -768,11 +788,11 @@ Recipe Tree Viewer
             align-items: center;
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #3c3c3c;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .modal-title {
-            color: #cccccc;
+            color: var(--text-primary);
             font-size: 18px;
             font-weight: 600;
         }
@@ -780,7 +800,7 @@ Recipe Tree Viewer
         .modal-close {
             background: none;
             border: none;
-            color: #cccccc;
+            color: var(--text-primary);
             font-size: 20px;
             cursor: pointer;
             padding: 4px;
@@ -789,7 +809,7 @@ Recipe Tree Viewer
         }
 
         .modal-close:hover {
-            background: #3c3c3c;
+            background: var(--border-color);
         }
 
         .modal-content {
@@ -800,10 +820,10 @@ Recipe Tree Viewer
             width: 100%;
             height: 300px;
             padding: 12px;
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
             border-radius: 4px;
-            background: #1e1e1e;
-            color: #cccccc;
+            background: var(--bg-primary);
+            color: var(--text-primary);
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 12px;
             resize: vertical;
@@ -811,7 +831,7 @@ Recipe Tree Viewer
         }
 
         .modal-textarea:focus {
-            border-color: #007acc;
+            border-color: var(--accent-color);
         }
 
         .modal-buttons {
@@ -831,46 +851,46 @@ Recipe Tree Viewer
         }
 
         .modal-btn.primary {
-            background: #007acc;
+            background: var(--accent-color);
             color: white;
         }
 
         .modal-btn.primary:hover {
-            background: #005a9e;
+            background: var(--accent-color-hover);
         }
 
         .modal-btn.secondary {
-            background: #3c3c3c;
-            color: #cccccc;
+            background: var(--border-color);
+            color: var(--text-primary);
         }
 
         .modal-btn.secondary:hover {
-            background: #4c4c4c;
+            background: var(--border-color-hover);
         }
 
         .modal-btn.success {
-            background: #4CAF50;
+            background: var(--success-color);
             color: white;
         }
 
         .modal-btn.success:hover {
-            background: #45a049;
+            background: var(--success-color-hover);
         }
 
         /* Tab styles */
         .modal-tabs {
             display: flex;
-            border-bottom: 1px solid #3c3c3c;
+            border-bottom: 1px solid var(--border-color);
             margin-bottom: 20px;
         }
 
         .modal-tab {
-            background: #2d2d30;
-            border: 1px solid #3c3c3c;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-bottom: none;
             padding: 10px 20px;
             cursor: pointer;
-            color: #cccccc;
+            color: var(--text-primary);
             font-size: 14px;
             font-weight: 500;
             transition: all 0.3s ease;
@@ -879,13 +899,13 @@ Recipe Tree Viewer
         }
 
         .modal-tab.active {
-            background: #252526;
-            border-color: #007acc;
-            color: #007acc;
+            background: var(--bg-tertiary);
+            border-color: var(--accent-color);
+            color: var(--accent-color);
         }
 
         .modal-tab:hover:not(.active) {
-            background: #3c3c3c;
+            background: var(--border-color);
         }
 
         .modal-tab-content {
@@ -901,7 +921,7 @@ Recipe Tree Viewer
             font-size: 12px;
             line-height: 1.4;
             white-space: pre-wrap;
-            color: #cccccc;
+            color: var(--text-primary);
         }
 
         .tree-text {
@@ -909,12 +929,12 @@ Recipe Tree Viewer
             font-size: 12px;
             line-height: 1.4;
             white-space: pre-wrap;
-            color: #cccccc;
+            color: var(--text-primary);
         }
 
         .preset-item {
-            background: #2d2d30;
-            border: 1px solid #3c3c3c;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
             border-radius: 6px;
             padding: 12px;
             margin-bottom: 8px;
@@ -922,8 +942,8 @@ Recipe Tree Viewer
         }
 
         .preset-item:hover {
-            border-color: #007acc;
-            background: #3c3c3c;
+            border-color: var(--accent-color);
+            background: var(--border-color);
         }
 
         .preset-header {
@@ -935,12 +955,12 @@ Recipe Tree Viewer
 
         .preset-name {
             font-weight: 600;
-            color: #cccccc;
+            color: var(--text-primary);
             font-size: 14px;
         }
 
         .preset-date {
-            color: #999999;
+            color: var(--text-secondary);
             font-size: 12px;
         }
 
@@ -960,35 +980,35 @@ Recipe Tree Viewer
         }
 
         .preset-btn.load {
-            background: #007acc;
+            background: var(--accent-color);
             color: white;
         }
 
         .preset-btn.load:hover {
-            background: #005a9e;
+            background: var(--accent-color-hover);
         }
 
         .preset-btn.share {
-            background: #4CAF50;
+            background: var(--success-color);
             color: white;
         }
 
         .preset-btn.share:hover {
-            background: #45a049;
+            background: var(--success-color-hover);
         }
 
         .preset-btn.delete {
-            background: #d73a49;
+            background: var(--danger-color);
             color: white;
         }
 
         .preset-btn.delete:hover {
-            background: #b31d28;
+            background: var(--danger-color-hover);
         }
 
         .empty-presets {
             text-align: center;
-            color: #6a6a6a;
+            color: var(--text-muted);
             font-style: italic;
             padding: 20px;
         }
@@ -1012,7 +1032,7 @@ Recipe Tree Viewer
 
         .circular-connection {
             position: absolute;
-            border: 2px dashed #3c3c3c;
+            border: 2px dashed var(--border-color);
             border-radius: 50%;
             pointer-events: none;
         }
@@ -1023,7 +1043,7 @@ Recipe Tree Viewer
             height: 0;
             border-style: solid;
             border-width: 6px;
-            border-color: #3c3c3c transparent transparent transparent;
+            border-color: var(--border-color) transparent transparent transparent;
             transform-origin: 50% 0;
             pointer-events: none;
         }
@@ -1043,30 +1063,30 @@ Recipe Tree Viewer
         }
 
         .rename-modal-content {
-            background: #252526;
+            background: var(--bg-tertiary);
             border-radius: 8px;
             padding: 24px;
             max-width: 500px;
             width: 90%;
-            border: 1px solid #3c3c3c;
+            border: 1px solid var(--border-color);
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
         }
 
         .rename-modal-header {
             margin-bottom: 20px;
             padding-bottom: 15px;
-            border-bottom: 1px solid #3c3c3c;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .rename-modal-title {
-            color: #cccccc;
+            color: var(--text-primary);
             font-size: 18px;
             font-weight: 600;
             margin: 0;
         }
 
         .rename-modal-message {
-            color: #cccccc;
+            color: var(--text-primary);
             margin-bottom: 20px;
             line-height: 1.5;
         }
@@ -1088,30 +1108,30 @@ Recipe Tree Viewer
         }
 
         .rename-modal-btn.keep {
-            background: #4CAF50;
+            background: var(--success-color);
             color: white;
         }
 
         .rename-modal-btn.keep:hover {
-            background: #45a049;
+            background: var(--success-color-hover);
         }
 
         .rename-modal-btn.clear {
-            background: #d73a49;
+            background: var(--danger-color);
             color: white;
         }
 
         .rename-modal-btn.clear:hover {
-            background: #b31d28;
+            background: var(--danger-color-hover);
         }
 
         .rename-modal-btn.cancel {
-            background: #3c3c3c;
-            color: #cccccc;
+            background: var(--border-color);
+            color: var(--text-primary);
         }
 
         .rename-modal-btn.cancel:hover {
-            background: #4c4c4c;
+            background: var(--border-color-hover);
         }
     </style>
 </head>

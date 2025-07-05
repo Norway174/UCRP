@@ -157,10 +157,23 @@ UCRP automatically detects and handles circular dependencies by:
 The application uses CSS custom properties for easy theming:
 ```css
 :root {
-  --bg-primary: #1e1e1e;
-  --bg-secondary: #2d2d30;
-  --accent-color: #007acc;
-  --text-primary: #cccccc;
+   --bg-primary: #1e1e1e;
+   --bg-secondary: #2d2d30;
+   --bg-tertiary: #252526;
+   --accent-color: #007acc;
+   --accent-color-hover: #005a9e;
+   --text-primary: #cccccc;
+   --text-secondary: #999999;
+   --text-muted: #6a6a6a;
+   --border-color: #3c3c3c;
+   --border-color-hover: #4c4c4c;
+   --success-color: #4CAF50;
+   --success-color-hover: #45a049;
+   --warning-color: #ff9800;
+   --danger-color: #d73a49;
+   --danger-color-hover: #b31d28;
+   --info-color: #2aafc7;
+   --info-color-light: #1f889b;
 }
 ```
 
