@@ -35,6 +35,15 @@ A powerful, visual crafting recipe planner that helps you organize complex craft
 
 ## 📋 Getting Started
 
+### 🌐 Use Online
+**No installation required!** Simply open the link below in any modern web browser:
+
+👉 **[Launch UCRP Online](https://norway174.github.io/UCRP/UCRP.html)**
+
+- Works instantly on desktop and mobile
+- Your data is saved locally to your browser (Nothing is ever sent to any servers!)
+- No downloads, no setup, no registration needed
+
 ### 💾 Download for Offline Use
 1. **Right-click** on this link: [UCRP.html](https://norway174.github.io/UCRP/UCRP.html)
 2. **Select "Save As"** or "Save Link As"
@@ -166,6 +175,8 @@ If you find UCRP helpful and want to support continued development, consider buy
 [![Ko-Fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/norway174)
 
 Every contribution helps keep this project free and open-source for everyone to enjoy! 
+
+---
 
 FYI, the whole project. Including this ReadMe is "vibe coded" with AI. lol.  
 It works tho! Enjoy!
