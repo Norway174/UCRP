@@ -162,6 +162,7 @@ Recipe Tree Viewer
             border-radius: 6px;
             padding: 15px;
             min-width: 220px;
+            min-height: 205px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
             user-select: none;
@@ -314,6 +315,26 @@ Recipe Tree Viewer
             color: var(--text-secondary);
         }
 
+        .node-output-quantity label {
+            min-width: 54px;
+        }
+
+        .node-actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .node-actions .node-output-quantity {
+            gap: 6px;
+            margin: 0 0 0 auto;
+        }
+
+        .node-actions .node-output-quantity input {
+            width: 50px;
+        }
+
         .total-needed {
             font-size: 12px;
             color: var(--info-color);
@@ -338,7 +359,7 @@ Recipe Tree Viewer
 
         .node-notes textarea {
             width: 100%;
-            height: 40px;
+            height: 70px;
             padding: 4px 6px;
             border: 1px solid transparent;
             border-radius: 3px;
@@ -1363,10 +1384,11 @@ Recipe Tree Viewer
         }
 
         class TreeNode {
-            constructor(id, itemId = null, quantity = 1, x = 0, y = 0, parentId = null) {
+            constructor(id, itemId = null, quantity = 1, x = 0, y = 0, parentId = null, outputQuantity = 1) {
                 this.id = id;
                 this.itemId = itemId;
                 this.quantity = quantity;
+                this.outputQuantity = outputQuantity;
                 this.x = x;
                 this.y = y;
                 this.parentId = parentId;
@@ -1534,6 +1556,7 @@ Recipe Tree Viewer
                     id: node.id,
                     itemId: node.itemId,
                     quantity: node.quantity,
+                    outputQuantity: node.outputQuantity || 1,
                     x: node.x,
                     y: node.y,
                     parentId: node.parentId,
@@ -1619,7 +1642,8 @@ Recipe Tree Viewer
                                 nodeData.quantity,
                                 nodeData.x,
                                 nodeData.y,
-                                nodeData.parentId
+                                nodeData.parentId,
+                                nodeData.outputQuantity || 1
                             );
                             node.completed = nodeData.completed;
                             node.children = nodeData.children;
@@ -2053,6 +2077,7 @@ Recipe Tree Viewer
                             const originalNode = findOriginalNode(node);
                             if (originalNode) {
                                 node.quantity = originalNode.quantity;
+                                node.outputQuantity = originalNode.outputQuantity || 1;
                             }
                             
                             // Use the comprehensive sync system to handle ghost propagation
@@ -2084,6 +2109,8 @@ Recipe Tree Viewer
 
                 // Use existing item
                 node.itemId = existingItem.id;
+                const matchingNode = nodes.find(n => n.id !== node.id && n.itemId === existingItem.id);
+                node.outputQuantity = matchingNode?.outputQuantity || 1;
                 
                 // If this node has a parent, add the item relationship
                 if (node.parentId && !node.isGhost) {
@@ -2209,9 +2236,9 @@ Recipe Tree Viewer
         }
 
         const NODE_WIDTH = 220;
-        const NODE_HEIGHT = 120;
+        const NODE_HEIGHT = 205;
         const H_SPACING = 25;
-        const V_SPACING = 200;
+        const V_SPACING = 265;
 
         function layoutTree() {
             if (nodes.length === 0) return;
@@ -2447,7 +2474,7 @@ Recipe Tree Viewer
                     </div>
                     <div class="node-quantity">
                         <label>Qty:</label>
-                        <input type="number" value="${node.quantity}" min="1" 
+                        <input class="quantity-input" type="number" value="${node.quantity}" min="1"
                                onchange="updateNodeQuantity(${node.id}, this.value)"
                                onblur="handleQuantityBlur(${node.id}, this.value)">
                         <span class="total-needed">Total: ${formatNumber(calculateTotalQuantity(node))}</span>
@@ -2461,6 +2488,14 @@ Recipe Tree Viewer
                                 title="${node.useGlobalNotes ? 'Using global notes (shared across all instances)' : 'Using local notes (specific to this node)'}">
                             ${node.useGlobalNotes ? '🔗' : '📝'}
                         </button>
+                    </div>
+                    <div class="node-actions">
+                        <div class="node-quantity node-output-quantity">
+                            <label>Output Qty:</label>
+                            <input class="output-quantity-input" type="number" value="${node.outputQuantity || 1}" min="1"
+                                   onchange="updateNodeOutputQuantity(${node.id}, this.value)"
+                                   onblur="handleOutputQuantityBlur(${node.id}, this.value)">
+                        </div>
                     </div>
                 `;
                 
@@ -2488,7 +2523,7 @@ Recipe Tree Viewer
                     </div>
                     <div class="node-quantity">
                         <label>Qty:</label>
-                        <input type="number" value="${node.quantity}" min="1" 
+                        <input class="quantity-input" type="number" value="${node.quantity}" min="1"
                                onchange="updateNodeQuantity(${node.id}, this.value)"
                                onblur="handleQuantityBlur(${node.id}, this.value)">
                         <span class="total-needed">Total: ${formatNumber(calculateTotalQuantity(node))}</span>
@@ -2503,10 +2538,18 @@ Recipe Tree Viewer
                             ${node.useGlobalNotes ? '🔗' : '📝'}
                         </button>
                     </div>
-                    <button class="node-complete ${node.completed ? '' : 'incomplete'}" 
-                            onclick="toggleComplete(${node.id})">
-                        ${node.completed ? 'Complete' : 'Incomplete'}
-                    </button>
+                    <div class="node-actions">
+                        <button class="node-complete ${node.completed ? '' : 'incomplete'}"
+                                onclick="toggleComplete(${node.id})">
+                            ${node.completed ? 'Complete' : 'Incomplete'}
+                        </button>
+                        <div class="node-quantity node-output-quantity">
+                            <label>Output Qty:</label>
+                            <input class="output-quantity-input" type="number" value="${node.outputQuantity || 1}" min="1"
+                                   onchange="updateNodeOutputQuantity(${node.id}, this.value)"
+                                   onblur="handleOutputQuantityBlur(${node.id}, this.value)">
+                        </div>
+                    </div>
                     ${addButtonHtml}
                 `;
             }
@@ -2824,7 +2867,7 @@ Recipe Tree Viewer
                                     // Update the UI for this node
                                     const nodeElement = document.getElementById(`node-${n.id}`);
                                     if (nodeElement) {
-                                        const quantityInput = nodeElement.querySelector('input[type="number"]');
+                                        const quantityInput = nodeElement.querySelector('.quantity-input');
                                         if (quantityInput) {
                                             quantityInput.value = parsedQuantity;
                                         }
@@ -2841,7 +2884,7 @@ Recipe Tree Viewer
                                 // Update the UI for ghost nodes
                                 const nodeElement = document.getElementById(`node-${n.id}`);
                                 if (nodeElement) {
-                                    const quantityInput = nodeElement.querySelector('input[type="number"]');
+                                    const quantityInput = nodeElement.querySelector('.quantity-input');
                                     if (quantityInput) {
                                         quantityInput.value = parsedQuantity;
                                     }
@@ -2854,7 +2897,7 @@ Recipe Tree Viewer
                     node.quantity = parsedQuantity;
                     const nodeElement = document.getElementById(`node-${node.id}`);
                     if (nodeElement) {
-                        const quantityInput = nodeElement.querySelector('input[type="number"]');
+                        const quantityInput = nodeElement.querySelector('.quantity-input');
                         if (quantityInput) {
                             quantityInput.value = parsedQuantity;
                         }
@@ -2869,6 +2912,33 @@ Recipe Tree Viewer
 
         function handleQuantityBlur(id, quantity) {
             updateNodeQuantity(id, quantity);
+        }
+
+        function updateNodeOutputQuantity(id, outputQuantity) {
+            const node = nodes.find(n => n.id === id);
+            if (!node) return;
+
+            const parsedOutputQuantity = Math.max(1, parseInt(outputQuantity) || 1);
+
+            nodes.forEach(n => {
+                if (n.id === node.id || (node.itemId && n.itemId === node.itemId)) {
+                    n.outputQuantity = parsedOutputQuantity;
+
+                    const nodeElement = document.getElementById(`node-${n.id}`);
+                    const outputQuantityInput = nodeElement?.querySelector('.output-quantity-input');
+                    if (outputQuantityInput) {
+                        outputQuantityInput.value = parsedOutputQuantity;
+                    }
+                }
+            });
+
+            updateSummary();
+            updateTotalNeededForAllNodes();
+            autoSave();
+        }
+
+        function handleOutputQuantityBlur(id, outputQuantity) {
+            updateNodeOutputQuantity(id, outputQuantity);
         }
 
         function updateNodeNotes(id, notes) {
@@ -3234,20 +3304,17 @@ Recipe Tree Viewer
         }
 
         function calculateTotalQuantity(node) {
-            let total = node.quantity;
-            let current = node;
-            
-            while (current.parentId) {
-                const parent = nodes.find(n => n.id === current.parentId);
-                if (parent) {
-                    total *= parent.quantity;
-                    current = parent;
-                } else {
-                    break;
-                }
+            if (!node.parentId) {
+                return node.quantity;
             }
-            
-            return total;
+
+            const parent = nodes.find(n => n.id === node.parentId);
+            if (!parent) {
+                return node.quantity;
+            }
+
+            const parentCraftsNeeded = Math.ceil(calculateTotalQuantity(parent) / (parent.outputQuantity || 1));
+            return node.quantity * parentCraftsNeeded;
         }
 
         function calculateTreeBounds() {
@@ -3329,6 +3396,7 @@ Recipe Tree Viewer
                     id: node.id,
                     itemId: node.itemId,
                     quantity: node.quantity,
+                    outputQuantity: node.outputQuantity || 1,
                     x: node.x,
                     y: node.y,
                     parentId: node.parentId,
@@ -3454,7 +3522,7 @@ Recipe Tree Viewer
             
             let result = '';
             result += `${prefix}${isLast ? '└── ' : '├── '}${status} ${displayName}\n`;
-            result += `${prefix}${isLast ? '    ' : '│   '}    Qty: ${formatNumber(node.quantity)} | Total: ${formatNumber(totalQuantity)}\n`;
+            result += `${prefix}${isLast ? '    ' : '│   '}    Qty: ${formatNumber(node.quantity)} | Output Qty: ${formatNumber(node.outputQuantity || 1)} | Total: ${formatNumber(totalQuantity)}\n`;
             
             if (node.notes && node.notes.trim()) {
                 const notesLines = node.notes.split('\n');
@@ -3597,7 +3665,8 @@ Recipe Tree Viewer
                         nodeData.quantity,
                         nodeData.x,
                         nodeData.y,
-                        nodeData.parentId
+                        nodeData.parentId,
+                        nodeData.outputQuantity || 1
                     );
                     node.completed = nodeData.completed;
                     node.children = nodeData.children;
@@ -3730,6 +3799,7 @@ Recipe Tree Viewer
                 const treeData = preset.data;
                 
                 nodes = treeData.nodes || [];
+                nodes.forEach(node => node.outputQuantity = node.outputQuantity || 1);
                 nextId = treeData.nextId || 1;
                 treeDirectionTopToBottom = treeData.treeDirection !== false;
                 
@@ -3937,7 +4007,8 @@ Recipe Tree Viewer
                         childItem.defaultQuantity, 
                         childX, 
                         childY, 
-                        node.id
+                        node.id,
+                        nodes.find(n => n.itemId === childItemId)?.outputQuantity || 1
                     );
                     
                     nodes.push(childNode);
@@ -3986,7 +4057,8 @@ Recipe Tree Viewer
                         originalChildNode.quantity,
                         parentNode.x,
                         parentNode.y + 150,
-                        parentNode.id
+                        parentNode.id,
+                        originalChildNode.outputQuantity || 1
                     );
                     
                     // Copy additional properties
@@ -4071,7 +4143,8 @@ Recipe Tree Viewer
                         sourceChild.quantity,
                         targetParent.x,
                         targetParent.y + 150,
-                        targetParent.id
+                        targetParent.id,
+                        sourceChild.outputQuantity || 1
                     );
                     
                     // Copy all properties
@@ -4087,6 +4160,7 @@ Recipe Tree Viewer
                     // Update existing child to match source
                     targetChild.itemId = sourceChild.itemId;
                     targetChild.quantity = sourceChild.quantity;
+                    targetChild.outputQuantity = sourceChild.outputQuantity || 1;
                     targetChild.completed = sourceChild.completed;
                     targetChild.isGhost = sourceChild.isGhost;
                     targetChild.originalParentId = sourceChild.originalParentId;
@@ -4150,6 +4224,7 @@ Recipe Tree Viewer
                          
                          // Sync quantity from the original ghost node
                          childNode.quantity = ghostNode.quantity;
+                         childNode.outputQuantity = ghostNode.outputQuantity || 1;
                          
                          // Remove any children this node might have had (ghosts don't have children)
                          const childrenToRemove = getAllChildren(childNode.id);
@@ -4164,7 +4239,8 @@ Recipe Tree Viewer
                          ghostNode.quantity,
                          otherParent.x,
                          otherParent.y + 150,
-                         otherParent.id
+                         otherParent.id,
+                         ghostNode.outputQuantity || 1
                      );
                      
                      newGhostChild.isGhost = true;
@@ -4207,6 +4283,7 @@ Recipe Tree Viewer
                          
                          // Sync quantity
                          childNode.quantity = regularNode.quantity;
+                         childNode.outputQuantity = regularNode.outputQuantity || 1;
                          
                          // Add back any children this item should have
                          const item = items.get(regularNode.itemId);
