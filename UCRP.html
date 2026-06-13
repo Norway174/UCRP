@@ -1396,6 +1396,7 @@ Recipe Tree Viewer
                 this.children = []; // Array of node IDs (not item IDs)
                 this.level = 0;
                 this.isGhost = false; // For circular dependency visualization
+                this.originalParentId = null;
                 this.localNotes = ''; // Local notes specific to this node
                 this.useGlobalNotes = true; // Default to global notes
             }
@@ -1502,6 +1503,97 @@ Recipe Tree Viewer
             return num.toLocaleString();
         }
 
+        function escapeHTML(value) {
+            return String(value)
+                .replaceAll('&', '&amp;')
+                .replaceAll('<', '&lt;')
+                .replaceAll('>', '&gt;')
+                .replaceAll('"', '&quot;')
+                .replaceAll("'", '&#039;');
+        }
+
+        function serializeTreeData() {
+            return {
+                nodes: nodes.map(node => ({
+                    id: node.id,
+                    itemId: node.itemId,
+                    quantity: node.quantity,
+                    outputQuantity: node.outputQuantity || 1,
+                    x: node.x,
+                    y: node.y,
+                    parentId: node.parentId,
+                    completed: node.completed,
+                    children: [...node.children],
+                    level: node.level,
+                    isGhost: node.isGhost,
+                    originalParentId: node.originalParentId || null,
+                    localNotes: node.localNotes,
+                    useGlobalNotes: node.useGlobalNotes
+                })),
+                items: Array.from(items.values()).map(item => ({
+                    id: item.id,
+                    name: item.name,
+                    childItems: Array.from(item.childItems),
+                    defaultQuantity: item.defaultQuantity,
+                    notes: item.notes
+                })),
+                nextId,
+                nextItemId,
+                treeDirection: treeDirectionTopToBottom
+            };
+        }
+
+        function restoreTreeData(treeData, preserveItemsWhenMissing = false) {
+            if (!treeData || !Array.isArray(treeData.nodes)) {
+                throw new Error('Expected a "nodes" array.');
+            }
+
+            nodes = [];
+
+            if (Array.isArray(treeData.items)) {
+                items.clear();
+                treeData.items.forEach(itemData => {
+                    const item = new Item(itemData.id, itemData.name || '');
+                    item.defaultQuantity = itemData.defaultQuantity || 1;
+                    item.notes = itemData.notes || '';
+                    items.set(item.id, item);
+                });
+
+                treeData.items.forEach(itemData => {
+                    const item = items.get(itemData.id);
+                    (itemData.childItems || []).forEach(childId => {
+                        if (item && items.has(childId)) item.childItems.add(childId);
+                    });
+                });
+            } else if (!preserveItemsWhenMissing) {
+                throw new Error('Expected an "items" array.');
+            }
+
+            treeData.nodes.forEach(nodeData => {
+                const node = new TreeNode(
+                    nodeData.id,
+                    nodeData.itemId ?? null,
+                    nodeData.quantity || 1,
+                    nodeData.x || 0,
+                    nodeData.y || 0,
+                    nodeData.parentId ?? null,
+                    nodeData.outputQuantity || 1
+                );
+                node.completed = Boolean(nodeData.completed);
+                node.children = Array.isArray(nodeData.children) ? [...nodeData.children] : [];
+                node.level = nodeData.level || 0;
+                node.isGhost = Boolean(nodeData.isGhost);
+                node.originalParentId = nodeData.originalParentId || null;
+                node.localNotes = nodeData.localNotes || '';
+                node.useGlobalNotes = nodeData.useGlobalNotes !== undefined ? nodeData.useGlobalNotes : true;
+                nodes.push(node);
+            });
+
+            nextId = treeData.nextId || Math.max(...nodes.map(node => node.id), 0) + 1;
+            nextItemId = treeData.nextItemId || Math.max(...Array.from(items.keys()), 0) + 1;
+            treeDirectionTopToBottom = treeData.treeDirection !== false;
+        }
+
         // LocalStorage keys
         const STORAGE_KEYS = {
             TREE_DATA: 'recipeTreeData',
@@ -1546,38 +1638,26 @@ Recipe Tree Viewer
             });
         }
 
+        function removeItemRelationshipIfUnused(parentId, itemId, excludedNodeId = null) {
+            const parent = nodes.find(node => node.id === parentId);
+            if (!parent?.itemId || !itemId) return;
+
+            const stillUsed = parent.children.some(childId => {
+                const child = nodes.find(node => node.id === childId);
+                return child && child.id !== excludedNodeId && child.itemId === itemId && !child.isGhost;
+            });
+
+            if (!stillUsed) {
+                items.get(parent.itemId)?.removeChildItem(itemId);
+            }
+        }
+
         // Auto-save function
         function autoSave() {
             // Clean up unused items before saving
             cleanupUnusedItems();
             
-            const treeData = {
-                nodes: nodes.map(node => ({
-                    id: node.id,
-                    itemId: node.itemId,
-                    quantity: node.quantity,
-                    outputQuantity: node.outputQuantity || 1,
-                    x: node.x,
-                    y: node.y,
-                    parentId: node.parentId,
-                    completed: node.completed,
-                    children: node.children,
-                    level: node.level,
-                    isGhost: node.isGhost,
-                    localNotes: node.localNotes,
-                    useGlobalNotes: node.useGlobalNotes
-                })),
-                items: Array.from(items.entries()).map(([id, item]) => ({
-                    id: id,
-                    name: item.name,
-                    childItems: Array.from(item.childItems),
-                    defaultQuantity: item.defaultQuantity,
-                    notes: item.notes
-                })),
-                nextId: nextId,
-                nextItemId: nextItemId,
-                treeDirection: treeDirectionTopToBottom
-            };
+            const treeData = serializeTreeData();
             
             localStorage.setItem(STORAGE_KEYS.TREE_DATA, JSON.stringify(treeData));
             localStorage.setItem(STORAGE_KEYS.TREE_DIRECTION, JSON.stringify(treeDirectionTopToBottom));
@@ -1606,58 +1686,7 @@ Recipe Tree Viewer
                 
                 if (savedTreeData) {
                     const treeData = JSON.parse(savedTreeData);
-                    
-                    // Clear existing data
-                    nodes = [];
-                    items.clear();
-                    
-                    // Load items first
-                    if (treeData.items) {
-                        treeData.items.forEach(itemData => {
-                            const item = new Item(itemData.id, itemData.name);
-                            item.defaultQuantity = itemData.defaultQuantity;
-                            item.notes = itemData.notes;
-                            items.set(item.id, item);
-                        });
-                        
-                        // Then restore child relationships
-                        treeData.items.forEach(itemData => {
-                            const item = items.get(itemData.id);
-                            if (item) {
-                                itemData.childItems.forEach(childId => {
-                                    if (items.has(childId)) {
-                                        item.childItems.add(childId);
-                                    }
-                                });
-                            }
-                        });
-                    }
-                    
-                    // Load nodes
-                    if (treeData.nodes) {
-                        treeData.nodes.forEach(nodeData => {
-                            const node = new TreeNode(
-                                nodeData.id,
-                                nodeData.itemId,
-                                nodeData.quantity,
-                                nodeData.x,
-                                nodeData.y,
-                                nodeData.parentId,
-                                nodeData.outputQuantity || 1
-                            );
-                            node.completed = nodeData.completed;
-                            node.children = nodeData.children;
-                            node.level = nodeData.level;
-                            node.isGhost = nodeData.isGhost;
-                            node.localNotes = nodeData.localNotes || '';
-                            node.useGlobalNotes = nodeData.useGlobalNotes !== undefined ? nodeData.useGlobalNotes : true;
-                            nodes.push(node);
-                        });
-                    }
-                    
-                    // Update IDs
-                    nextId = treeData.nextId || Math.max(...nodes.map(n => n.id), 0) + 1;
-                    nextItemId = treeData.nextItemId || Math.max(...Array.from(items.keys()), 0) + 1;
+                    restoreTreeData(treeData);
                 }
                 
                 if (savedDirection !== null) {
@@ -1994,11 +2023,16 @@ Recipe Tree Viewer
         function clearNodeItem(nodeId) {
             const node = nodes.find(n => n.id === nodeId);
             if (!node) return;
+            const previousItemId = node.itemId;
             
             // Remove all children
             const childrenToRemove = getAllChildren(nodeId);
             nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
             node.children = [];
+
+            if (node.parentId) {
+                removeItemRelationshipIfUnused(node.parentId, previousItemId, node.id);
+            }
             
             // Clear the item reference
             node.itemId = null;
@@ -2052,6 +2086,7 @@ Recipe Tree Viewer
         function selectName(nodeId, name) {
             const node = nodes.find(n => n.id === nodeId);
             if (!node) return;
+            const previousItemId = node.itemId;
 
             // Check if this name already exists as an item
             let existingItem = null;
@@ -2108,6 +2143,9 @@ Recipe Tree Viewer
                 }
 
                 // Use existing item
+                if (node.parentId && previousItemId !== existingItem.id) {
+                    removeItemRelationshipIfUnused(node.parentId, previousItemId, node.id);
+                }
                 node.itemId = existingItem.id;
                 const matchingNode = nodes.find(n => n.id !== node.id && n.itemId === existingItem.id);
                 node.outputQuantity = matchingNode?.outputQuantity || 1;
@@ -2160,7 +2198,7 @@ Recipe Tree Viewer
             const displayName = node.name || 'Not Set';
             const isNotSet = !node.name;
             
-            container.innerHTML = `<button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${displayName}</button>`;
+            container.innerHTML = `<button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${escapeHTML(displayName)}</button>`;
         }
 
         // Coordinate conversion functions
@@ -2468,7 +2506,7 @@ Recipe Tree Viewer
                 nodeElement.innerHTML = `
                     <div class="node-header">
                         <div class="name-input-container">
-                            <button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${displayName}</button>
+                            <button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${escapeHTML(displayName)}</button>
                         </div>
                         <button class="delete-btn" onclick="deleteNode(${node.id})">×</button>
                     </div>
@@ -2517,7 +2555,7 @@ Recipe Tree Viewer
                 nodeElement.innerHTML = `
                     <div class="node-header">
                         <div class="name-input-container">
-                            <button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${displayName}</button>
+                            <button class="node-name ${isNotSet ? 'not-set' : ''}" onclick="openNameDropdown(${node.id})">${escapeHTML(displayName)}</button>
                         </div>
                         <button class="delete-btn" onclick="deleteNode(${node.id})">×</button>
                     </div>
@@ -3294,7 +3332,7 @@ Recipe Tree Viewer
                 .map(([name, quantity]) => `
                     <div class="summary-item">
                         <div class="summary-item-number">${formatNumber(quantity)}</div>
-                        <div class="summary-item-name">${name}</div>
+                        <div class="summary-item-name">${escapeHTML(name)}</div>
                     </div>
                 `).join('');
         }
@@ -3391,33 +3429,7 @@ Recipe Tree Viewer
 
         // Share Tree Function
         function shareTree() {
-            const treeData = {
-                nodes: nodes.map(node => ({
-                    id: node.id,
-                    itemId: node.itemId,
-                    quantity: node.quantity,
-                    outputQuantity: node.outputQuantity || 1,
-                    x: node.x,
-                    y: node.y,
-                    parentId: node.parentId,
-                    completed: node.completed,
-                    children: node.children,
-                    level: node.level,
-                    isGhost: node.isGhost,
-                    localNotes: node.localNotes,
-                    useGlobalNotes: node.useGlobalNotes
-                })),
-                items: Array.from(items.entries()).map(([id, item]) => ({
-                    id: id,
-                    name: item.name,
-                    childItems: Array.from(item.childItems),
-                    defaultQuantity: item.defaultQuantity,
-                    notes: item.notes
-                })),
-                nextId: nextId,
-                nextItemId: nextItemId,
-                treeDirection: treeDirectionTopToBottom
-            };
+            const treeData = serializeTreeData();
             
             // Generate all content formats
             generateMaterialsList();
@@ -3633,54 +3645,7 @@ Recipe Tree Viewer
                     return;
                 }
                 
-                // Clear existing data
-                nodes = [];
-                items.clear();
-                
-                // Load items first
-                treeData.items.forEach(itemData => {
-                    const item = new Item(itemData.id, itemData.name);
-                    item.defaultQuantity = itemData.defaultQuantity;
-                    item.notes = itemData.notes;
-                    items.set(item.id, item);
-                });
-                
-                // Then restore child relationships
-                treeData.items.forEach(itemData => {
-                    const item = items.get(itemData.id);
-                    if (item) {
-                        itemData.childItems.forEach(childId => {
-                            if (items.has(childId)) {
-                                item.childItems.add(childId);
-                            }
-                        });
-                    }
-                });
-                
-                // Load nodes
-                treeData.nodes.forEach(nodeData => {
-                    const node = new TreeNode(
-                        nodeData.id,
-                        nodeData.itemId,
-                        nodeData.quantity,
-                        nodeData.x,
-                        nodeData.y,
-                        nodeData.parentId,
-                        nodeData.outputQuantity || 1
-                    );
-                    node.completed = nodeData.completed;
-                    node.children = nodeData.children;
-                    node.level = nodeData.level;
-                    node.isGhost = nodeData.isGhost;
-                    node.localNotes = nodeData.localNotes || '';
-                    node.useGlobalNotes = nodeData.useGlobalNotes !== undefined ? nodeData.useGlobalNotes : true;
-                    nodes.push(node);
-                });
-                
-                // Update IDs
-                nextId = treeData.nextId || Math.max(...nodes.map(n => n.id), 0) + 1;
-                nextItemId = treeData.nextItemId || Math.max(...Array.from(items.keys()), 0) + 1;
-                treeDirectionTopToBottom = treeData.treeDirection !== false;
+                restoreTreeData(treeData);
                 
                 // Update UI
                 const btn = document.getElementById('treeViewBtn');
@@ -3765,11 +3730,7 @@ Recipe Tree Viewer
                 presets.splice(presets.findIndex(p => p.name === presetName), 1);
             }
             
-            const treeData = {
-                nodes: nodes,
-                nextId: nextId,
-                treeDirection: treeDirectionTopToBottom
-            };
+            const treeData = serializeTreeData();
             
             const newPreset = {
                 name: presetName,
@@ -3798,10 +3759,7 @@ Recipe Tree Viewer
             if (confirm(`Are you sure you want to load the preset "${presetName}"? This will replace your current recipe tree.`)) {
                 const treeData = preset.data;
                 
-                nodes = treeData.nodes || [];
-                nodes.forEach(node => node.outputQuantity = node.outputQuantity || 1);
-                nextId = treeData.nextId || 1;
-                treeDirectionTopToBottom = treeData.treeDirection !== false;
+                restoreTreeData(treeData, true);
                 
                 // Update UI
                 const btn = document.getElementById('treeViewBtn');
@@ -3834,13 +3792,8 @@ Recipe Tree Viewer
             }
             
             // Temporarily set the current tree data to the preset data for generation
-            const originalNodes = nodes;
-            const originalNextId = nextId;
-            const originalTreeDirection = treeDirectionTopToBottom;
-            
-            nodes = preset.data.nodes || [];
-            nextId = preset.data.nextId || 1;
-            treeDirectionTopToBottom = preset.data.treeDirection !== false;
+            const originalTreeData = serializeTreeData();
+            restoreTreeData(preset.data, true);
             
             // Generate all content formats
             generateMaterialsList();
@@ -3851,9 +3804,7 @@ Recipe Tree Viewer
             textarea.value = jsonString;
             
             // Restore original data
-            nodes = originalNodes;
-            nextId = originalNextId;
-            treeDirectionTopToBottom = originalTreeDirection;
+            restoreTreeData(originalTreeData);
             
             // Close save/load modal and open share modal
             closeSaveLoadModal();
@@ -3885,26 +3836,33 @@ Recipe Tree Viewer
             // Sort presets by date (newest first)
             presets.sort((a, b) => new Date(b.date) - new Date(a.date));
             
-            presetsList.innerHTML = presets.map(preset => {
+            presetsList.innerHTML = presets.map((preset, index) => {
                 const date = new Date(preset.date);
                 const formattedDate = date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
                 
                 return `
-                    <div class="preset-item">
+                    <div class="preset-item" data-preset-index="${index}">
                         <div class="preset-header">
                             <div>
-                                <div class="preset-name">${preset.name}</div>
-                                <div class="preset-date">${formattedDate}</div>
+                                <div class="preset-name">${escapeHTML(preset.name)}</div>
+                                <div class="preset-date">${escapeHTML(formattedDate)}</div>
                             </div>
                             <div class="preset-buttons">
-                                <button class="preset-btn load" onclick="loadPreset('${preset.name}')">Load</button>
-                                <button class="preset-btn share" onclick="sharePreset('${preset.name}')">Share</button>
-                                <button class="preset-btn delete" onclick="deletePreset('${preset.name}')">Delete</button>
+                                <button class="preset-btn load">Load</button>
+                                <button class="preset-btn share">Share</button>
+                                <button class="preset-btn delete">Delete</button>
                             </div>
                         </div>
                     </div>
                 `;
             }).join('');
+
+            presetsList.querySelectorAll('.preset-item').forEach(presetElement => {
+                const preset = presets[Number(presetElement.dataset.presetIndex)];
+                presetElement.querySelector('.load').addEventListener('click', () => loadPreset(preset.name));
+                presetElement.querySelector('.share').addEventListener('click', () => sharePreset(preset.name));
+                presetElement.querySelector('.delete').addEventListener('click', () => deletePreset(preset.name));
+            });
         }
 
         // Open Save/Load modal
@@ -3949,6 +3907,8 @@ Recipe Tree Viewer
                 // Keep the existing recipe and update the name
                 node.item.name = newName;
             } else if (action === 'clear') {
+                const previousItemId = node.itemId;
+
                 // Get all child nodes to remove
                 const childrenToRemove = getAllChildren(nodeId);
                 
@@ -3962,6 +3922,13 @@ Recipe Tree Viewer
                 const newItem = new Item(nextItemId++, newName);
                 items.set(newItem.id, newItem);
                 node.itemId = newItem.id;
+
+                if (node.parentId) {
+                    removeItemRelationshipIfUnused(node.parentId, previousItemId, node.id);
+                    const parent = nodes.find(n => n.id === node.parentId);
+                    items.get(parent?.itemId)?.addChildItem(newItem.id);
+                    syncAllTreesWithSameItem(node.id);
+                }
             } else {
                 // Cancel - revert the name in the dropdown
                 closeNameDropdown();
@@ -4010,6 +3977,7 @@ Recipe Tree Viewer
                         node.id,
                         nodes.find(n => n.itemId === childItemId)?.outputQuantity || 1
                     );
+                    childNode.completed = node.completed;
                     
                     nodes.push(childNode);
                     node.children.push(childNode.id);
@@ -4062,7 +4030,7 @@ Recipe Tree Viewer
                     );
                     
                     // Copy additional properties
-                    childNode.completed = originalChildNode.completed;
+                    childNode.completed = parentNode.completed;
                     childNode.isGhost = originalChildNode.isGhost;
                     childNode.originalParentId = originalChildNode.originalParentId;
                     
@@ -4147,8 +4115,8 @@ Recipe Tree Viewer
                         sourceChild.outputQuantity || 1
                     );
                     
-                    // Copy all properties
-                    targetChild.completed = sourceChild.completed;
+                    // Completion is per tree; new children inherit from their local parent.
+                    targetChild.completed = targetParent.completed;
                     targetChild.isGhost = sourceChild.isGhost;
                     targetChild.originalParentId = sourceChild.originalParentId;
                     targetChild.localNotes = sourceChild.localNotes;
@@ -4158,22 +4126,22 @@ Recipe Tree Viewer
                     targetParent.children.push(targetChild.id);
                 } else {
                     // Update existing child to match source
+                    const wasGhost = targetChild.isGhost;
                     targetChild.itemId = sourceChild.itemId;
                     targetChild.quantity = sourceChild.quantity;
                     targetChild.outputQuantity = sourceChild.outputQuantity || 1;
-                    targetChild.completed = sourceChild.completed;
                     targetChild.isGhost = sourceChild.isGhost;
                     targetChild.originalParentId = sourceChild.originalParentId;
                     targetChild.localNotes = sourceChild.localNotes;
                     targetChild.useGlobalNotes = sourceChild.useGlobalNotes;
                     
                     // If converting to/from ghost, handle children appropriately
-                    if (sourceChild.isGhost && !targetChild.isGhost) {
+                    if (sourceChild.isGhost && !wasGhost) {
                         // Converting to ghost - remove children
                         const childrenToRemove = getAllChildren(targetChild.id);
                         nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
                         targetChild.children = [];
-                    } else if (!sourceChild.isGhost && targetChild.isGhost) {
+                    } else if (!sourceChild.isGhost && wasGhost) {
                         // Converting from ghost - will handle children in recursive call below
                         targetChild.children = [];
                     }
@@ -4245,7 +4213,7 @@ Recipe Tree Viewer
                      
                      newGhostChild.isGhost = true;
                      newGhostChild.originalParentId = otherParent.id;
-                     newGhostChild.completed = ghostNode.completed;
+                     newGhostChild.completed = otherParent.completed;
                      
                      nodes.push(newGhostChild);
                      otherParent.children.push(newGhostChild.id);
