@@ -317,6 +317,7 @@ Recipe Tree Viewer
 
         .node-output-quantity label {
             min-width: 54px;
+            text-align: right;
         }
 
         .node-actions {
@@ -1177,7 +1178,7 @@ Recipe Tree Viewer
                     <button class="control-btn" id="treeViewBtn" onclick="toggleTreeView()">▼</button>
                     <button class="control-btn" onclick="saveLoadData()">Save/Load</button>
                     <button class="control-btn" onclick="shareTree()">Share</button>
-                    <button class="control-btn" onclick="resetTree()">Reset</button>
+                    <button class="control-btn" onclick="resetTree()">Clear</button>
                 </div>
                 
                 <button class="materials-toggle" onclick="toggleMaterials()">
@@ -1589,6 +1590,40 @@ Recipe Tree Viewer
                 nodes.push(node);
             });
 
+            const nodeById = new Map(nodes.map(node => [node.id, node]));
+            nodes.forEach(node => {
+                if (node.parentId !== null && (!nodeById.has(node.parentId) || node.parentId === node.id)) {
+                    node.parentId = null;
+                }
+            });
+
+            nodes.forEach(node => {
+                const visited = new Set([node.id]);
+                let ancestor = nodeById.get(node.parentId);
+                while (ancestor) {
+                    if (visited.has(ancestor.id)) {
+                        node.parentId = null;
+                        break;
+                    }
+                    visited.add(ancestor.id);
+                    ancestor = nodeById.get(ancestor.parentId);
+                }
+            });
+
+            nodes.forEach(node => {
+                node.children = [...new Set(node.children)].filter(childId => {
+                    const child = nodeById.get(childId);
+                    return child && child.parentId === node.id;
+                });
+            });
+
+            nodes.forEach(node => {
+                if (node.parentId !== null) {
+                    const parent = nodeById.get(node.parentId);
+                    if (!parent.children.includes(node.id)) parent.children.push(node.id);
+                }
+            });
+
             nextId = treeData.nextId || Math.max(...nodes.map(node => node.id), 0) + 1;
             nextItemId = treeData.nextItemId || Math.max(...Array.from(items.keys()), 0) + 1;
             treeDirectionTopToBottom = treeData.treeDirection !== false;
@@ -1661,8 +1696,11 @@ Recipe Tree Viewer
             
             localStorage.setItem(STORAGE_KEYS.TREE_DATA, JSON.stringify(treeData));
             localStorage.setItem(STORAGE_KEYS.TREE_DIRECTION, JSON.stringify(treeDirectionTopToBottom));
-            
-            // Save camera state
+
+            saveViewState();
+        }
+
+        function saveViewState() {
             const cameraState = {
                 offsetX: offsetX,
                 offsetY: offsetY,
@@ -2520,7 +2558,7 @@ Recipe Tree Viewer
                     <div class="node-notes">
                         <textarea placeholder="Add notes..." 
                                   onchange="updateNodeNotes(${node.id}, this.value)"
-                                  onblur="handleNotesBlur(${node.id}, this.value)">${node.notes || ''}</textarea>
+                                  onblur="handleNotesBlur(${node.id}, this.value)">${escapeHTML(node.notes || '')}</textarea>
                         <button class="notes-toggle ${node.useGlobalNotes ? 'global' : ''}" 
                                 onmousedown="event.preventDefault(); toggleNotesMode(${node.id})"
                                 title="${node.useGlobalNotes ? 'Using global notes (shared across all instances)' : 'Using local notes (specific to this node)'}">
@@ -2569,7 +2607,7 @@ Recipe Tree Viewer
                     <div class="node-notes">
                         <textarea placeholder="Add notes..." 
                                   onchange="updateNodeNotes(${node.id}, this.value)"
-                                  onblur="handleNotesBlur(${node.id}, this.value)">${node.notes || ''}</textarea>
+                                  onblur="handleNotesBlur(${node.id}, this.value)">${escapeHTML(node.notes || '')}</textarea>
                         <button class="notes-toggle ${node.useGlobalNotes ? 'global' : ''}" 
                                 onmousedown="event.preventDefault(); toggleNotesMode(${node.id})"
                                 title="${node.useGlobalNotes ? 'Using global notes (shared across all instances)' : 'Using local notes (specific to this node)'}">
@@ -2750,7 +2788,7 @@ Recipe Tree Viewer
                 if (isDragging) {
                     isDragging = false;
                     container.style.cursor = 'grab';
-                    autoSave(); // Save camera state after dragging
+                    saveViewState();
                 }
             });
 
@@ -2790,7 +2828,7 @@ Recipe Tree Viewer
                     offsetY = cursorY - worldY * scale;
                     
                     updateCanvasTransform();
-                    autoSave(); // Save camera state after zooming
+                    saveViewState();
                 }
             });
         }
@@ -2860,11 +2898,13 @@ Recipe Tree Viewer
         function zoomIn() {
             scale = Math.min(scale * 1.2, 5);
             updateCanvasTransform();
+            saveViewState();
         }
 
         function zoomOut() {
             scale = Math.max(scale / 1.2, 0.1);
             updateCanvasTransform();
+            saveViewState();
         }
 
         function resetZoom() {
@@ -2872,6 +2912,7 @@ Recipe Tree Viewer
             offsetX = 0;
             offsetY = 0;
             updateCanvasTransform();
+            saveViewState();
         }
 
         function toggleMaterials() {
@@ -2882,14 +2923,15 @@ Recipe Tree Viewer
             section.classList.toggle('collapsed');
             
             // Save the state
-            autoSave();
+            saveViewState();
         }
 
         function updateNodeQuantity(id, quantity) {
             const node = nodes.find(n => n.id === id);
             if (node) {
-                const parsedQuantity = parseInt(quantity) || 1;
+                const parsedQuantity = Math.max(1, parseInt(quantity) || 1);
                 const itemId = node.itemId;
+                node.quantity = parsedQuantity;
                 
                 if (itemId && node.parentId) {
                     // Find the parent node
@@ -2930,9 +2972,8 @@ Recipe Tree Viewer
                             }
                         });
                     }
-                } else if (itemId) {
-                    // For root nodes (no parent), update all nodes with the same item
-                    node.quantity = parsedQuantity;
+                } else {
+                    // Root and unnamed nodes keep their quantity local to this tree.
                     const nodeElement = document.getElementById(`node-${node.id}`);
                     if (nodeElement) {
                         const quantityInput = nodeElement.querySelector('.quantity-input');
