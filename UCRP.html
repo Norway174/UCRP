@@ -573,6 +573,19 @@ Recipe Tree Viewer
             font-size: 13px;
         }
 
+        .summary-category {
+            color: var(--text-secondary);
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            margin: 14px 0 7px;
+            text-transform: uppercase;
+        }
+
+        .summary-category:first-child {
+            margin-top: 0;
+        }
+
         .summary-item-number {
             color: var(--accent-color);
             font-weight: 600;
@@ -599,6 +612,30 @@ Recipe Tree Viewer
             font-weight: 500;
             color: var(--text-primary);
             flex: 1;
+        }
+
+        .summary-complete-btn {
+            background: var(--success-color);
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 10px;
+            opacity: 0;
+            padding: 5px 7px;
+            pointer-events: none;
+            transition: opacity 0.15s ease, background 0.15s ease;
+        }
+
+        .summary-item:hover .summary-complete-btn,
+        .summary-item:focus-within .summary-complete-btn {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .summary-complete-btn:hover,
+        .summary-complete-btn:focus-visible {
+            background: var(--success-color-hover);
         }
 
         .summary-item-quantity {
@@ -3333,31 +3370,22 @@ Recipe Tree Viewer
         function updateSummary() {
             const container = document.getElementById('summaryContainer');
             const materialsSection = document.getElementById('materialsSection');
-            const leafNodes = getLeafNodes();
+            const requiredMaterialNodes = getRequiredMaterialNodes();
+            const categorizedSummary = getCategorizedRequiredMaterials(requiredMaterialNodes);
             
-            if (leafNodes.length === 0) {
+            if (nodes.length === 0) {
                 container.innerHTML = '<div class="empty-state">Add nodes to see required materials</div>';
                 materialsSection.classList.add('empty');
                 return;
             }
 
-            const summary = {};
-            
-            leafNodes.forEach(node => {
-                // Skip nodes with no name set or completed nodes
-                if (!node.name || node.name === 'Not Set' || node.completed) {
-                    return;
-                }
-                
-                const totalQuantity = calculateTotalQuantity(node);
-                if (summary[node.name]) {
-                    summary[node.name] += totalQuantity;
-                } else {
-                    summary[node.name] = totalQuantity;
-                }
-            });
+            if (requiredMaterialNodes.length === 0) {
+                container.innerHTML = '<div class="empty-state">All required materials are complete</div>';
+                materialsSection.classList.add('empty');
+                return;
+            }
 
-            if (Object.keys(summary).length === 0) {
+            if (categorizedSummary.length === 0) {
                 container.innerHTML = '<div class="empty-state">Set names for nodes to see required materials</div>';
                 materialsSection.classList.add('empty');
                 return;
@@ -3366,20 +3394,87 @@ Recipe Tree Viewer
             // Remove empty class when there are materials to display
             materialsSection.classList.remove('empty');
 
-            // Convert to array and sort by name for consistent ordering
-            const sortedItems = Object.entries(summary).sort(([a], [b]) => a.localeCompare(b));
-
-            container.innerHTML = sortedItems
-                .map(([name, quantity]) => `
-                    <div class="summary-item">
-                        <div class="summary-item-number">${formatNumber(quantity)}</div>
-                        <div class="summary-item-name">${escapeHTML(name)}</div>
-                    </div>
-                `).join('');
+            container.innerHTML = categorizedSummary.map(({ category, items }) => `
+                <div class="summary-category">${category}</div>
+                ${items.map(({ name, quantity, nodeIds }) => `
+                        <div class="summary-item">
+                            <div class="summary-item-number">${formatNumber(quantity)}</div>
+                            <div class="summary-item-name">${escapeHTML(name)}</div>
+                            <button class="summary-complete-btn"
+                                    onclick="markRequiredMaterialGroupComplete([${nodeIds.join(',')}])"
+                                    title="Mark all ${escapeHTML(name)} steps as completed">
+                                Complete
+                            </button>
+                        </div>
+                    `).join('')}
+            `).join('');
         }
 
-        function getLeafNodes() {
-            return nodes.filter(node => node.children.length === 0);
+        // Return the lowest incomplete step in each branch.
+        function getRequiredMaterialNodes() {
+            return nodes.filter(node => {
+                if (node.completed) {
+                    return false;
+                }
+
+                return node.children.every(childId => {
+                    const child = nodes.find(n => n.id === childId);
+                    return !child || child.completed;
+                });
+            });
+        }
+
+        function getRequiredMaterialCategory(node) {
+            if (node.parentId === null) {
+                return 'Finished Products';
+            }
+
+            if (node.children.length === 0) {
+                return 'Base Materials';
+            }
+
+            return 'Intermediate Products';
+        }
+
+        function getCategorizedRequiredMaterials(requiredMaterialNodes = getRequiredMaterialNodes()) {
+            const categoryOrder = ['Finished Products', 'Intermediate Products', 'Base Materials'];
+            const summaries = new Map(categoryOrder.map(category => [category, new Map()]));
+
+            requiredMaterialNodes.forEach(node => {
+                if (!node.name || node.name === 'Not Set') {
+                    return;
+                }
+
+                const category = getRequiredMaterialCategory(node);
+                const categorySummary = summaries.get(category);
+                const existing = categorySummary.get(node.name);
+
+                if (existing) {
+                    existing.quantity += calculateTotalQuantity(node);
+                    existing.nodeIds.push(node.id);
+                } else {
+                    categorySummary.set(node.name, {
+                        name: node.name,
+                        quantity: calculateTotalQuantity(node),
+                        nodeIds: [node.id]
+                    });
+                }
+            });
+
+            return categoryOrder
+                .map(category => ({
+                    category,
+                    items: Array.from(summaries.get(category).values())
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                }))
+                .filter(({ items }) => items.length > 0);
+        }
+
+        function markRequiredMaterialGroupComplete(nodeIds) {
+            nodeIds.forEach(nodeId => markNodeAndChildrenComplete(nodeId));
+            renderAllNodes();
+            updateSummary();
+            autoSave();
         }
 
         function calculateTotalQuantity(node) {
@@ -3499,45 +3594,28 @@ Recipe Tree Viewer
 
         // Generate materials list with ASCII art formatting
         function generateMaterialsList() {
-            const leafNodes = getLeafNodes();
-            const summary = {};
-            
-            leafNodes.forEach(node => {
-                if (!node.name || node.name === 'Not Set' || node.completed) {
-                    return;
-                }
-                
-                const totalQuantity = calculateTotalQuantity(node);
-                if (summary[node.name]) {
-                    summary[node.name] += totalQuantity;
-                } else {
-                    summary[node.name] = totalQuantity;
-                }
-            });
+            const categorizedSummary = getCategorizedRequiredMaterials();
 
-            if (Object.keys(summary).length === 0) {
+            if (categorizedSummary.length === 0) {
                 document.getElementById('materialsTextarea').value = 'No materials required (all items completed or no names set)';
                 return;
             }
-
-            // Sort by name for consistent ordering
-            const sortedItems = Object.entries(summary).sort(([a], [b]) => a.localeCompare(b));
             
             let materialsText = '';
             materialsText += '╔══════════════════════════════════════════════════════════════╗\n';
             materialsText += '║                    REQUIRED MATERIALS                        ║\n';
             materialsText += '╠══════════════════════════════════════════════════════════════╣\n';
             
-            sortedItems.forEach(([name, quantity], index) => {
-                const isLast = index === sortedItems.length - 1;
-                const borderChar = isLast ? '║' : '║';
-                const endBorderChar = isLast ? '║' : '║';
-                
-                const limitedName = name.length > 50 ? name.substring(0, 50) + '...' : name;
-                const formattedQuantity = formatNumber(quantity);
-                const quantityWithX = `${formattedQuantity}x`;
-                const namePadding = 59 - quantityWithX.length;
-                materialsText += `${borderChar} ${quantityWithX} ${limitedName.padEnd(namePadding)} ${endBorderChar}\n`;
+            categorizedSummary.forEach(({ category, items }) => {
+                materialsText += `║ ${category.toUpperCase().padEnd(60)} ║\n`;
+
+                items.forEach(({ name, quantity }) => {
+                    const limitedName = name.length > 50 ? name.substring(0, 50) + '...' : name;
+                    const formattedQuantity = formatNumber(quantity);
+                    const quantityWithX = `${formattedQuantity}x`;
+                    const namePadding = 59 - quantityWithX.length;
+                    materialsText += `║ ${quantityWithX} ${limitedName.padEnd(namePadding)} ║\n`;
+                });
             });
             
             materialsText += '╚══════════════════════════════════════════════════════════════╝\n';
