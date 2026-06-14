@@ -28,6 +28,7 @@ Recipe Tree Viewer
             --danger-color-hover: #b31d28;
             --info-color: #2aafc7;
             --info-color-light: #1f889b;
+            --grid-color: #242424;
         }
 
         * {
@@ -61,9 +62,10 @@ Recipe Tree Viewer
             height: 100vh;
             overflow: hidden;
             cursor: grab;
-            background-image: 
-                radial-gradient(circle at 1px 1px, var(--border-color) 1px, transparent 0);
-            background-size: 20px 20px;
+            background-image:
+                linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+                linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+            background-size: 32px 32px;
             background-position: 0 0;
             transform-origin: 0 0;
         }
@@ -93,16 +95,16 @@ Recipe Tree Viewer
 
         .left-panel {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            width: 350px;
+            top: 14px;
+            left: 14px;
+            width: 310px;
             background: var(--bg-tertiary);
-            border-radius: 8px;
-            padding: 20px;
+            border-radius: 6px;
+            padding: 14px;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
             border: 1px solid var(--border-color);
             pointer-events: auto;
-            max-height: calc(100vh - 40px);
+            max-height: calc(100vh - 28px);
             overflow-y: auto;
         }
 
@@ -125,14 +127,14 @@ Recipe Tree Viewer
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 2px solid var(--border-color);
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
         }
 
         .header h1 {
             color: var(--text-primary);
-            font-size: 24px;
+            font-size: 19px;
             font-weight: 600;
         }
 
@@ -140,10 +142,10 @@ Recipe Tree Viewer
             background: var(--accent-color);
             color: white;
             border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
+            padding: 8px 12px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             transition: all 0.3s ease;
             box-shadow: 0 2px 8px rgba(0, 122, 204, 0.3);
@@ -703,7 +705,7 @@ Recipe Tree Viewer
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
-            margin-top: 15px;
+            margin-top: 10px;
             width: 100%;
             text-align: left;
             transition: all 0.3s ease;
@@ -725,9 +727,9 @@ Recipe Tree Viewer
         }
 
         .materials-section {
-            margin-top: 15px;
+            margin-top: 10px;
             border-top: 1px solid var(--border-color);
-            padding-top: 15px;
+            padding-top: 10px;
             transition: all 0.3s ease;
             overflow: hidden;
             max-height: 300px;
@@ -783,9 +785,9 @@ Recipe Tree Viewer
 
         .control-buttons {
             display: flex;
-            gap: 8px;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
+            gap: 6px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -793,7 +795,7 @@ Recipe Tree Viewer
             background: var(--bg-secondary);
             color: var(--text-primary);
             border: 1px solid var(--border-color);
-            padding: 8px 12px;
+            padding: 6px 8px;
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
@@ -803,12 +805,22 @@ Recipe Tree Viewer
             text-align: center;
         }
 
-        .control-btn#treeViewBtn {
+        .control-btn#settingsBtn {
             flex: none;
-            width: 40px;
-            min-width: 40px;
-            height: 36px;
-            min-height: 36px;
+            width: 32px;
+            min-width: 32px;
+            height: 30px;
+            min-height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+
+        .control-btn#settingsBtn svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
         }
 
         .control-btn:hover {
@@ -875,6 +887,286 @@ Recipe Tree Viewer
             margin-bottom: 20px;
         }
 
+        .settings-modal {
+            max-width: 420px;
+        }
+
+        .settings-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .settings-field + .settings-field {
+            margin-top: 18px;
+        }
+
+        .settings-field label {
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 600;
+        }
+
+        .direction-toggle-btn {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+
+        .direction-toggle-btn:hover {
+            background: var(--border-color);
+            border-color: var(--accent-color);
+        }
+
+        .direction-toggle-btn svg {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+            transition: transform 0.3s ease;
+        }
+
+        .direction-toggle-btn.top-down svg {
+            transform: rotate(90deg);
+        }
+
+        .background-type-buttons {
+            display: flex;
+            width: 100%;
+        }
+
+        .background-settings-control {
+            display: grid;
+            gap: 0;
+        }
+
+        .background-type-btn {
+            flex: 1;
+            height: 42px;
+            border: 1px solid var(--border-color);
+            border-right: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .background-type-btn:first-child {
+            border-radius: 4px 0 0 0;
+        }
+
+        .background-type-btn:last-child {
+            border-right: 1px solid var(--border-color);
+            border-radius: 0 4px 0 0;
+        }
+
+        .background-type-btn:hover {
+            background: var(--border-color);
+        }
+
+        .background-type-btn.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+        }
+
+        .background-type-btn.active + .background-type-btn {
+            border-left-color: var(--accent-color);
+        }
+
+        .background-type-btn svg {
+            width: 22px;
+            height: 22px;
+            fill: currentColor;
+        }
+
+        .background-options {
+            margin-top: -1px;
+            padding: 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 4px 4px;
+            background: var(--bg-secondary);
+            height: 134px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .background-option-panel {
+            position: absolute;
+            inset: 12px;
+            display: grid;
+            gap: 12px;
+            align-content: start;
+            opacity: 0;
+            transform: translateY(6px);
+            pointer-events: none;
+            transition: opacity 0.16s ease, transform 0.16s ease;
+        }
+
+        .background-option-panel.active {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .background-options.switching .background-option-panel.active {
+            opacity: 0;
+            transform: translateY(-6px);
+        }
+
+        .setting-control {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            color: var(--text-secondary);
+            font-size: 12px;
+        }
+
+        .setting-control input[type="color"] {
+            width: 42px;
+            height: 28px;
+            padding: 2px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            cursor: pointer;
+        }
+
+        .setting-control input[type="range"] {
+            flex: 1;
+            accent-color: var(--accent-color);
+        }
+
+        .setting-control output {
+            min-width: 38px;
+            color: var(--text-primary);
+            text-align: right;
+        }
+
+        .setting-control.wallpaper-url {
+            display: grid;
+            gap: 6px;
+        }
+
+        .setting-control input[type="url"] {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            outline: none;
+        }
+
+        .setting-control input[type="url"]:focus {
+            border-color: var(--accent-color);
+        }
+
+        .danger-zone {
+            margin-top: 22px;
+            border: 1px solid var(--danger-color);
+            border-radius: 4px;
+            overflow: hidden;
+            background: rgba(215, 58, 73, 0.08);
+        }
+
+        .danger-zone-stripes {
+            height: 8px;
+            background: repeating-linear-gradient(
+                135deg,
+                var(--danger-color) 0 8px,
+                var(--danger-color-hover) 8px 16px
+            );
+        }
+
+        .danger-zone-toggle {
+            width: 100%;
+            padding: 10px 14px;
+            border: none;
+            background: transparent;
+            color: #ff7b86;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            text-align: left;
+        }
+
+        .danger-zone-toggle:hover {
+            background: rgba(215, 58, 73, 0.12);
+        }
+
+        .danger-zone-toggle-icon {
+            transition: transform 0.2s ease;
+        }
+
+        .danger-zone.expanded .danger-zone-toggle-icon {
+            transform: rotate(90deg);
+        }
+
+        .danger-zone-body {
+            display: grid;
+            grid-template-rows: 0fr;
+            opacity: 0;
+            transition: grid-template-rows 0.22s ease, opacity 0.18s ease;
+        }
+
+        .danger-zone.expanded .danger-zone-body {
+            grid-template-rows: 1fr;
+            opacity: 1;
+        }
+
+        .danger-zone-body-inner {
+            min-height: 0;
+            overflow: hidden;
+        }
+
+        .danger-zone-content {
+            padding: 14px;
+            padding-top: 4px;
+        }
+
+        .danger-zone p {
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.45;
+        }
+
+        .danger-zone-btn {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--danger-color);
+            border-radius: 4px;
+            background: var(--danger-color);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .danger-zone-btn:hover {
+            background: var(--danger-color-hover);
+            border-color: #ff7b86;
+        }
+
         .modal-textarea {
             width: 100%;
             height: 300px;
@@ -893,10 +1185,63 @@ Recipe Tree Viewer
             border-color: var(--accent-color);
         }
 
+        .export-option {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+            font-size: 13px;
+            cursor: pointer;
+            width: fit-content;
+        }
+
+        .export-option input {
+            accent-color: var(--accent-color);
+            cursor: pointer;
+        }
+
         .modal-buttons {
             display: flex;
             gap: 10px;
             justify-content: flex-end;
+        }
+
+        .modal-buttons.split {
+            justify-content: space-between;
+        }
+
+        .about-help-content {
+            display: grid;
+            gap: 17px;
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .about-help-content h3 {
+            margin-bottom: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .about-help-content ul {
+            padding-left: 20px;
+        }
+
+        .about-help-content li + li {
+            margin-top: 5px;
+        }
+
+        .about-support-link {
+            display: inline-block;
+            margin-top: 10px;
+        }
+
+        .about-support-link img {
+            display: block;
+            max-width: 100%;
+            height: auto;
         }
 
         .modal-btn {
@@ -1212,9 +1557,13 @@ Recipe Tree Viewer
                 </div>
                 
                 <div class="control-buttons">
-                    <button class="control-btn" id="treeViewBtn" onclick="toggleTreeView()">▼</button>
+                    <button class="control-btn" id="settingsBtn" onclick="openSettingsModal()" title="Settings" aria-label="Settings">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true">
+                            <path d="m387.69-100-15.23-121.85q-16.07-5.38-32.96-15.07-16.88-9.7-30.19-20.77L196.46-210l-92.3-160 97.61-73.77q-1.38-8.92-1.96-17.92-.58-9-.58-17.93 0-8.53.58-17.34t1.96-19.27L104.16-590l92.3-159.23 112.46 47.31q14.47-11.46 30.89-20.96t32.27-15.27L387.69-860h184.62l15.23 122.23q18 6.54 32.57 15.27 14.58 8.73 29.43 20.58l114-47.31L855.84-590l-99.15 74.92q2.15 9.69 2.35 18.12.19 8.42.19 16.96 0 8.15-.39 16.58-.38 8.42-2.76 19.27L854.46-370l-92.31 160-112.61-48.08q-14.85 11.85-30.31 20.96-15.46 9.12-31.69 14.89L572.31-100H387.69ZM440-160h78.62L533-267.15q30.62-8 55.96-22.73 25.35-14.74 48.89-37.89L737.23-286l39.39-68-86.77-65.38q5-15.54 6.8-30.47 1.81-14.92 1.81-30.15 0-15.62-1.81-30.15-1.8-14.54-6.8-29.7L777.38-606 738-674l-100.54 42.38q-20.08-21.46-48.11-37.92-28.04-16.46-56.73-23.31L520-800h-79.38l-13.24 106.77q-30.61 7.23-56.53 22.15-25.93 14.93-49.47 38.46L222-674l-39.38 68L269-541.62q-5 14.24-7 29.62t-2 32.38q0 15.62 2 30.62 2 15 6.62 29.62l-86 65.38L222-286l99-42q22.77 23.38 48.69 38.31 25.93 14.92 57.31 22.92L440-160Zm40.46-200q49.92 0 84.96-35.04 35.04-35.04 35.04-84.96 0-49.92-35.04-84.96Q530.38-600 480.46-600q-50.54 0-85.27 35.04T360.46-480q0 49.92 34.73 84.96Q429.92-360 480.46-360ZM480-480Z"/>
+                        </svg>
+                    </button>
                     <button class="control-btn" onclick="saveLoadData()">Save/Load</button>
-                    <button class="control-btn" onclick="shareTree()">Share</button>
+                    <button class="control-btn" onclick="shareTree()">Export</button>
                     <button class="control-btn" onclick="resetTree()">Clear</button>
                 </div>
                 
@@ -1240,10 +1589,144 @@ Recipe Tree Viewer
         </div>
     </div>
 
+    <div class="modal-overlay" id="settingsModalOverlay">
+        <div class="modal settings-modal">
+            <div class="modal-header">
+                <h2 class="modal-title">Settings</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">&times;</button>
+            </div>
+            <div class="modal-content">
+                <div class="settings-field">
+                    <label for="treeDirectionBtn">Tree view direction</label>
+                    <button class="direction-toggle-btn" id="treeDirectionBtn" onclick="toggleTreeViewDirection()">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true">
+                            <path d="M600-160v-80H440v-200h-80v80H80v-240h280v80h80v-200h160v-80h280v240H600v-80h-80v320h80v-80h280v240H600Zm80-80h120v-80H680v80ZM160-440h120v-80H160v80Zm520-200h120v-80H680v80Zm0 400v-80 80ZM280-440v-80 80Zm400-200v-80 80Z"/>
+                        </svg>
+                        <span id="treeDirectionLabel">Top-Down</span>
+                    </button>
+                </div>
+                <div class="settings-field">
+                    <label>Background type</label>
+                    <div class="background-settings-control">
+                        <div class="background-type-buttons">
+                        <button class="background-type-btn" data-background-type="solid" onclick="setBackgroundType('solid')" title="Solid color" aria-label="Solid color">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="m247-904 57-56 343 343q23 23 23 57t-23 57L457-313q-23 23-57 23t-57-23L153-503q-23-23-23-57t23-57l190-191-96-96Zm153 153L209-560h382L400-751Zm303.5 447.5Q680-327 680-360q0-21 12.5-45t27.5-45q9-12 19-25t21-25q11 12 21 25t19 25q15 21 27.5 45t12.5 45q0 33-23.5 56.5T760-280q-33 0-56.5-23.5ZM80 0v-160h800V0H80Z"/></svg>
+                        </button>
+                        <button class="background-type-btn active" data-background-type="grid" onclick="setBackgroundType('grid')" title="Grid" aria-label="Grid">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h133v-133H200v133Zm213 0h134v-133H413v133Zm214 0h133v-133H627v133ZM200-413h133v-134H200v134Zm213 0h134v-134H413v134Zm214 0h133v-134H627v134ZM200-627h133v-133H200v133Zm213 0h134v-133H413v133Zm214 0h133v-133H627v133Z"/></svg>
+                        </button>
+                        <button class="background-type-btn" data-background-type="dots" onclick="setBackgroundType('dots')" title="Dots" aria-label="Dots">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M342.5-257.5Q360-275 360-300t-17.5-42.5Q325-360 300-360t-42.5 17.5Q240-325 240-300t17.5 42.5Q275-240 300-240t42.5-17.5Zm0-360Q360-635 360-660t-17.5-42.5Q325-720 300-720t-42.5 17.5Q240-685 240-660t17.5 42.5Q275-600 300-600t42.5-17.5Zm0 180Q360-455 360-480t-17.5-42.5Q325-540 300-540t-42.5 17.5Q240-505 240-480t17.5 42.5Q275-420 300-420t42.5-17.5Zm360 180Q720-275 720-300t-17.5-42.5Q685-360 660-360t-42.5 17.5Q600-325 600-300t17.5 42.5Q635-240 660-240t42.5-17.5Zm0-360Q720-635 720-660t-17.5-42.5Q685-720 660-720t-42.5 17.5Q600-685 600-660t17.5 42.5Q635-600 660-600t42.5-17.5ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Zm0-560v560-560Zm502.5 322.5Q720-455 720-480t-17.5-42.5Q685-540 660-540t-42.5 17.5Q600-505 600-480t17.5 42.5Q635-420 660-420t42.5-17.5Zm-180-180Q540-635 540-660t-17.5-42.5Q505-720 480-720t-42.5 17.5Q420-685 420-660t17.5 42.5Q455-600 480-600t42.5-17.5Zm0 360Q540-275 540-300t-17.5-42.5Q505-360 480-360t-42.5 17.5Q420-325 420-300t17.5 42.5Q455-240 480-240t42.5-17.5Zm0-180Q540-455 540-480t-17.5-42.5Q505-540 480-540t-42.5 17.5Q420-505 420-480t17.5 42.5Q455-420 480-420t42.5-17.5Z"/></svg>
+                        </button>
+                        <button class="background-type-btn" data-background-type="diagonal" onclick="setBackgroundType('diagonal')" title="Diagonal lines" aria-label="Diagonal lines">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M176-120q-19-4-35.5-20.5T120-176l664-664q21 5 36 20.5t21 35.5L176-120Zm-56-252v-112l356-356h112L120-372Zm0-308v-80q0-33 23.5-56.5T200-840h80L120-680Zm560 560 160-160v80q0 33-23.5 56.5T760-120h-80Zm-308 0 468-468v112L484-120H372Z"/></svg>
+                        </button>
+                        <button class="background-type-btn" data-background-type="wallpaper" onclick="setBackgroundType('wallpaper')" title="Wallpaper" aria-label="Wallpaper">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" aria-hidden="true"><path d="M200-120q-33 0-56.5-23.5T120-200v-240h80v240h240v80H200Zm320 0v-80h240v-240h80v240q0 33-23.5 56.5T760-120H520ZM240-280l120-160 90 120 120-160 150 200H240ZM120-520v-240q0-33 23.5-56.5T200-840h240v80H200v240h-80Zm640 0v-240H520v-80h240q33 0 56.5 23.5T840-760v240h-80Zm-183-57q-17-17-17-43t17-43q17-17 43-17t43 17q17 17 17 43t-17 43q-17 17-43 17t-43-17Z"/></svg>
+                        </button>
+                        </div>
+                        <div class="background-options">
+                        <div class="background-option-panel" data-background-panel="solid">
+                            <label class="setting-control">Color <input type="color" id="solidBackgroundColor" value="#1e1e1e" oninput="updateBackgroundSetting('solidColor', this.value)"></label>
+                        </div>
+                        <div class="background-option-panel active" data-background-panel="grid">
+                            <label class="setting-control">Background <input type="color" id="gridBackgroundColor" value="#1e1e1e" oninput="updateBackgroundSetting('backgroundColor', this.value)"></label>
+                            <label class="setting-control">Grid <input type="color" id="gridPatternColor" value="#242424" oninput="updateBackgroundSetting('patternColor', this.value)"></label>
+                            <label class="setting-control">Size <input type="range" id="gridSize" min="8" max="100" value="32" oninput="updateBackgroundSize(this.value)"><output id="gridSizeOutput">32px</output></label>
+                        </div>
+                        <div class="background-option-panel" data-background-panel="dots">
+                            <label class="setting-control">Background <input type="color" id="dotsBackgroundColor" value="#1e1e1e" oninput="updateBackgroundSetting('backgroundColor', this.value)"></label>
+                            <label class="setting-control">Dots <input type="color" id="dotsPatternColor" value="#333333" oninput="updateBackgroundSetting('patternColor', this.value)"></label>
+                            <label class="setting-control">Size <input type="range" id="dotsSize" min="8" max="100" value="32" oninput="updateBackgroundSize(this.value)"><output id="dotsSizeOutput">32px</output></label>
+                        </div>
+                        <div class="background-option-panel" data-background-panel="diagonal">
+                            <label class="setting-control">Background <input type="color" id="diagonalBackgroundColor" value="#1e1e1e" oninput="updateBackgroundSetting('backgroundColor', this.value)"></label>
+                            <label class="setting-control">Lines <input type="color" id="diagonalPatternColor" value="#242424" oninput="updateBackgroundSetting('patternColor', this.value)"></label>
+                            <label class="setting-control">Size <input type="range" id="diagonalSize" min="8" max="100" value="32" oninput="updateBackgroundSize(this.value)"><output id="diagonalSizeOutput">32px</output></label>
+                        </div>
+                        <div class="background-option-panel" data-background-panel="wallpaper">
+                            <label class="setting-control wallpaper-url">Direct image URL <input type="url" id="wallpaperUrl" placeholder="https://example.com/image.jpg" oninput="updateBackgroundSetting('wallpaperUrl', this.value)"></label>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="danger-zone">
+                    <div class="danger-zone-stripes"></div>
+                    <button class="danger-zone-toggle" onclick="toggleDangerZone()" aria-expanded="false">
+                        <span>Danger Zone</span>
+                        <span class="danger-zone-toggle-icon">▶</span>
+                    </button>
+                    <div class="danger-zone-body">
+                        <div class="danger-zone-body-inner">
+                            <div class="danger-zone-content">
+                                <p>Deletes all nodes and all locally saved data, including settings, camera state, and saved presets. This cannot be undone.</p>
+                                <button class="danger-zone-btn" onclick="clearAllLocalData()">Clear All Local Data</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-buttons split">
+                <button class="modal-btn secondary" onclick="openAboutModal()">About</button>
+                <button class="modal-btn secondary" onclick="closeSettingsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="aboutModalOverlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 class="modal-title">About</h2>
+                <button class="modal-close" onclick="closeAboutModal()">&times;</button>
+            </div>
+            <div class="modal-content about-help-content">
+                <section>
+                    <h3>Universal Crafting Recipe Planner</h3>
+                    <p>Build reusable crafting recipe trees, calculate required materials, and track crafting progress.</p>
+                    <p>UCRP was written by AI and created by Norway174. Everything is contained in a single HTML file that can be downloaded and run locally and offline. There is no server, and all your data remains on your own device. No ads, no tracking, no signup.</p>
+                </section>
+                <section>
+                    <h3>Support UCRP</h3>
+                    <p>If you like the application, please consider supporting my Ko-fi.</p>
+                    <a class="about-support-link" href="https://ko-fi.com/norway174" target="_blank" rel="noopener noreferrer">
+                        <img src="https://ko-fi.com/img/githubbutton_sm.svg" alt="Support Norway174 on Ko-fi">
+                    </a>
+                </section>
+                <section>
+                    <h3>Getting Started</h3>
+                    <ul>
+                        <li>Add a root node, name it, then use its plus button to add ingredients.</li>
+                        <li>Select an existing item name to reuse its saved recipe in another tree.</li>
+                        <li>Adjust Qty and Output Qty to calculate the materials required.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3>Navigation and Progress</h3>
+                    <ul>
+                        <li>Drag the background to pan and use the mouse wheel or zoom controls to zoom.</li>
+                        <li>Mark nodes complete to remove finished materials from the required-materials summary.</li>
+                        <li>Use Settings to change tree direction and background appearance.</li>
+                    </ul>
+                </section>
+                <section>
+                    <h3>Saving and Exporting</h3>
+                    <ul>
+                        <li>UCRP automatically saves the current tree and settings locally.</li>
+                        <li>Save/Load stores named recipe presets.</li>
+                        <li>Export provides a materials list, tree view, and shareable JSON.</li>
+                    </ul>
+                </section>
+            </div>
+            <div class="modal-buttons">
+                <button class="modal-btn secondary" onclick="closeAboutModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
     <div class="modal-overlay" id="modalOverlay">
         <div class="modal">
             <div class="modal-header">
-                <h2 class="modal-title">Share Recipe Tree</h2>
+                <h2 class="modal-title">Export Recipe Tree</h2>
                 <button class="modal-close" onclick="closeModal()">&times;</button>
             </div>
             
@@ -1261,6 +1744,10 @@ Recipe Tree Viewer
                 
                 <div class="modal-tab-content" id="treeTab">
                     <p style="margin-bottom: 10px; color: #cccccc;">Copy the ASCII tree view below:</p>
+                    <label class="export-option">
+                        <input type="checkbox" id="excludeCompletedTreeNodes" onchange="generateASCIITreeView()">
+                        Exclude Completed Nodes
+                    </label>
                     <textarea class="modal-textarea tree-text" id="treeTextarea" placeholder="ASCII tree view will appear here..." readonly onclick="this.select()"></textarea>
                 </div>
                 
@@ -1532,6 +2019,17 @@ Recipe Tree Viewer
         // Tree view direction (true = top-to-bottom, false = left-to-right)
         let treeDirectionTopToBottom = true;
 
+        let backgroundSettings = {
+            type: 'grid',
+            solidColor: '#1e1e1e',
+            grid: { backgroundColor: '#1e1e1e', patternColor: '#242424', size: 32 },
+            dots: { backgroundColor: '#1e1e1e', patternColor: '#333333', size: 32 },
+            diagonal: { backgroundColor: '#1e1e1e', patternColor: '#242424', size: 32 },
+            wallpaperUrl: ''
+        };
+        let backgroundSwitchTimeout = null;
+        let pendingBackgroundType = null;
+
         // Global variable to track open dropdown
         let openDropdownId = null;
         let isDropdownItemBeingClicked = false;
@@ -1672,7 +2170,8 @@ Recipe Tree Viewer
             TREE_DIRECTION: 'recipeTreeDirection',
             SAVED_PRESETS: 'recipeTreePresets',
             CAMERA_STATE: 'recipeTreeCameraState',
-            MATERIALS_COLLAPSED: 'recipeTreeMaterialsCollapsed'
+            MATERIALS_COLLAPSED: 'recipeTreeMaterialsCollapsed',
+            BACKGROUND_SETTINGS: 'recipeTreeBackgroundSettings'
         };
 
         // Clean up unused items that have no nodes referencing them
@@ -1758,6 +2257,7 @@ Recipe Tree Viewer
                 const savedDirection = localStorage.getItem(STORAGE_KEYS.TREE_DIRECTION);
                 const savedCameraState = localStorage.getItem(STORAGE_KEYS.CAMERA_STATE);
                 const savedMaterialsCollapsed = localStorage.getItem(STORAGE_KEYS.MATERIALS_COLLAPSED);
+                const savedBackgroundSettings = localStorage.getItem(STORAGE_KEYS.BACKGROUND_SETTINGS);
                 
                 if (savedTreeData) {
                     const treeData = JSON.parse(savedTreeData);
@@ -1766,6 +2266,17 @@ Recipe Tree Viewer
                 
                 if (savedDirection !== null) {
                     treeDirectionTopToBottom = JSON.parse(savedDirection);
+                }
+
+                if (savedBackgroundSettings) {
+                    const parsedSettings = JSON.parse(savedBackgroundSettings);
+                    backgroundSettings = {
+                        ...backgroundSettings,
+                        ...parsedSettings,
+                        grid: { ...backgroundSettings.grid, ...parsedSettings.grid },
+                        dots: { ...backgroundSettings.dots, ...parsedSettings.dots },
+                        diagonal: { ...backgroundSettings.diagonal, ...parsedSettings.diagonal }
+                    };
                 }
                 
                 // Restore camera state if available
@@ -1791,10 +2302,6 @@ Recipe Tree Viewer
                         materialsToggle.classList.remove('collapsed');
                     }
                 }
-                
-                // Update UI
-                const btn = document.getElementById('treeViewBtn');
-                btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
                 
                 if (nodes.length > 0) {
                     recalculateLevels();
@@ -2539,7 +3046,7 @@ Recipe Tree Viewer
                     // Update the last known bounds
                     lastTreeBounds = newBounds;
                 }
-                
+
                 updateCanvasTransform();
             }
 
@@ -2780,13 +3287,7 @@ Recipe Tree Viewer
         function updateCanvasTransform() {
             const canvas = document.getElementById('treeCanvas');
             canvas.style.transform = `translate(${offsetX}px, ${offsetY}px) scale(${scale})`;
-            
-            // Update background position to create infinite grid effect
-            const gridSize = 20;
-            const bgOffsetX = (offsetX * scale) % gridSize;
-            const bgOffsetY = (offsetY * scale) % gridSize;
-            const container = document.getElementById('treeContainer');
-            container.style.backgroundPosition = `${bgOffsetX}px ${bgOffsetY}px`;
+            applyBackground();
         }
 
         function initCanvasDragging() {
@@ -3528,17 +4029,182 @@ Recipe Tree Viewer
             autoLoad();
         });
 
-        // Tree View Toggle Function
-        function toggleTreeView() {
+        function openSettingsModal() {
+            updateTreeDirectionSetting();
+            updateBackgroundSettingsUI();
+            setDangerZoneExpanded(false);
+            document.getElementById('settingsModalOverlay').style.display = 'flex';
+        }
+
+        function closeSettingsModal() {
+            document.getElementById('settingsModalOverlay').style.display = 'none';
+        }
+
+        function openAboutModal() {
+            document.getElementById('aboutModalOverlay').style.display = 'flex';
+        }
+
+        function closeAboutModal() {
+            document.getElementById('aboutModalOverlay').style.display = 'none';
+        }
+
+        function setDangerZoneExpanded(expanded) {
+            const dangerZone = document.querySelector('.danger-zone');
+            const toggle = document.querySelector('.danger-zone-toggle');
+            dangerZone.classList.toggle('expanded', expanded);
+            toggle.setAttribute('aria-expanded', String(expanded));
+        }
+
+        function toggleDangerZone() {
+            const dangerZone = document.querySelector('.danger-zone');
+            setDangerZoneExpanded(!dangerZone.classList.contains('expanded'));
+        }
+
+        function updateTreeDirectionSetting() {
+            const button = document.getElementById('treeDirectionBtn');
+            const label = document.getElementById('treeDirectionLabel');
+            button.classList.toggle('top-down', treeDirectionTopToBottom);
+            label.textContent = treeDirectionTopToBottom ? 'Top-Down' : 'Left-Right';
+            button.title = `Switch to ${treeDirectionTopToBottom ? 'Left-Right' : 'Top-Down'}`;
+        }
+
+        function toggleTreeViewDirection() {
             treeDirectionTopToBottom = !treeDirectionTopToBottom;
-            const btn = document.getElementById('treeViewBtn');
-            btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
-            
-            // Re-render the tree with new direction
+            updateTreeDirectionSetting();
             if (nodes.length > 0) {
                 renderAllNodes();
             }
             autoSave();
+        }
+
+        function getActivePatternSettings() {
+            return backgroundSettings[backgroundSettings.type];
+        }
+
+        function saveBackgroundSettings() {
+            localStorage.setItem(STORAGE_KEYS.BACKGROUND_SETTINGS, JSON.stringify(backgroundSettings));
+        }
+
+        function setBackgroundType(type) {
+            if (!['solid', 'grid', 'dots', 'diagonal', 'wallpaper'].includes(type)) return;
+            if (backgroundSettings.type === type && pendingBackgroundType === null) return;
+
+            document.querySelectorAll('.background-type-btn').forEach(button => {
+                button.classList.toggle('active', button.dataset.backgroundType === type);
+            });
+
+            const options = document.querySelector('.background-options');
+            options.classList.add('switching');
+            clearTimeout(backgroundSwitchTimeout);
+            pendingBackgroundType = type;
+            backgroundSwitchTimeout = setTimeout(() => {
+                backgroundSettings.type = pendingBackgroundType;
+                pendingBackgroundType = null;
+                updateBackgroundSettingsUI();
+                applyBackground();
+                saveBackgroundSettings();
+                options.classList.remove('switching');
+                backgroundSwitchTimeout = null;
+            }, 180);
+        }
+
+        function updateBackgroundSetting(setting, value) {
+            if (setting === 'solidColor' || setting === 'wallpaperUrl') {
+                backgroundSettings[setting] = value;
+            } else {
+                const activeSettings = getActivePatternSettings();
+                if (!activeSettings) return;
+                activeSettings[setting] = value;
+            }
+            applyBackground();
+            saveBackgroundSettings();
+        }
+
+        function updateBackgroundSize(value) {
+            const activeSettings = getActivePatternSettings();
+            if (!activeSettings) return;
+            activeSettings.size = Math.max(8, Math.min(100, parseInt(value) || 32));
+            updateBackgroundSettingsUI();
+            applyBackground();
+            saveBackgroundSettings();
+        }
+
+        function updateBackgroundSettingsUI() {
+            document.querySelectorAll('.background-type-btn').forEach(button => {
+                button.classList.toggle('active', button.dataset.backgroundType === backgroundSettings.type);
+            });
+            document.querySelectorAll('.background-option-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.backgroundPanel === backgroundSettings.type);
+            });
+
+            document.getElementById('solidBackgroundColor').value = backgroundSettings.solidColor;
+            document.getElementById('wallpaperUrl').value = backgroundSettings.wallpaperUrl;
+
+            ['grid', 'dots', 'diagonal'].forEach(type => {
+                const settings = backgroundSettings[type];
+                document.getElementById(`${type}BackgroundColor`).value = settings.backgroundColor;
+                document.getElementById(`${type}PatternColor`).value = settings.patternColor;
+                document.getElementById(`${type}Size`).value = settings.size;
+                document.getElementById(`${type}SizeOutput`).textContent = `${settings.size}px`;
+            });
+        }
+
+        function applyBackground() {
+            const container = document.getElementById('treeContainer');
+            if (!container) return;
+
+            container.style.backgroundImage = 'none';
+            container.style.backgroundColor = backgroundSettings.solidColor;
+            container.style.backgroundRepeat = 'repeat';
+            container.style.backgroundSize = 'auto';
+            container.style.backgroundPosition = '0 0';
+
+            if (backgroundSettings.type === 'solid') return;
+
+            if (backgroundSettings.type === 'wallpaper') {
+                container.style.backgroundColor = backgroundSettings.solidColor;
+                container.style.backgroundImage = backgroundSettings.wallpaperUrl
+                    ? `url(${JSON.stringify(backgroundSettings.wallpaperUrl)})`
+                    : 'none';
+                container.style.backgroundRepeat = 'no-repeat';
+                container.style.backgroundSize = 'cover';
+                container.style.backgroundPosition = 'center';
+                return;
+            }
+
+            const settings = getActivePatternSettings();
+            const scaledSize = settings.size * scale;
+            const bgOffsetX = offsetX % scaledSize;
+            const bgOffsetY = offsetY % scaledSize;
+            container.style.backgroundColor = settings.backgroundColor;
+            container.style.backgroundPosition = `${bgOffsetX}px ${bgOffsetY}px`;
+
+            if (backgroundSettings.type === 'grid') {
+                container.style.backgroundImage =
+                    `linear-gradient(to right, ${settings.patternColor} 1px, transparent 1px), ` +
+                    `linear-gradient(to bottom, ${settings.patternColor} 1px, transparent 1px)`;
+                container.style.backgroundSize = `${scaledSize}px ${scaledSize}px`;
+            } else if (backgroundSettings.type === 'dots') {
+                container.style.backgroundImage =
+                    `radial-gradient(circle at 1px 1px, ${settings.patternColor} 1px, transparent 1px)`;
+                container.style.backgroundSize = `${scaledSize}px ${scaledSize}px`;
+            } else if (backgroundSettings.type === 'diagonal') {
+                container.style.backgroundImage =
+                    `repeating-linear-gradient(135deg, ${settings.patternColor} 0 1px, transparent 1px ${scaledSize}px)`;
+            }
+        }
+
+        function clearAllLocalData() {
+            const confirmed = confirm(
+                'Clear all locally saved UCRP data?\n\n' +
+                'This permanently deletes every node, all settings, camera state, and all saved presets. ' +
+                'This action cannot be undone.'
+            );
+
+            if (!confirmed) return;
+
+            localStorage.clear();
+            location.reload();
         }
 
         // Reset Tree Function
@@ -3630,22 +4296,32 @@ Recipe Tree Viewer
                 return;
             }
 
+            const excludeCompleted = document.getElementById('excludeCompletedTreeNodes').checked;
+
             let treeText = '';
             treeText += '╔══════════════════════════════════════════════════════════════╗\n';
             treeText += '║                      RECIPE TREE VIEW                        ║\n';
             treeText += '╚══════════════════════════════════════════════════════════════╝\n\n';
 
-            const rootNodes = nodes.filter(n => n.parentId === null);
+            const rootNodes = nodes.filter(n =>
+                n.parentId === null && (!excludeCompleted || !n.completed)
+            );
+
+            if (rootNodes.length === 0) {
+                document.getElementById('treeTextarea').value =
+                    excludeCompleted ? 'No incomplete nodes in tree' : 'No nodes in tree';
+                return;
+            }
             
             rootNodes.forEach((root, rootIndex) => {
-                treeText += generateNodeTree(root, '', rootIndex === rootNodes.length - 1);
+                treeText += generateNodeTree(root, '', rootIndex === rootNodes.length - 1, excludeCompleted);
             });
 
             document.getElementById('treeTextarea').value = treeText;
         }
 
         // Recursively generate ASCII tree for a node and its children
-        function generateNodeTree(node, prefix, isLast) {
+        function generateNodeTree(node, prefix, isLast, excludeCompleted = false) {
 			const limitedName = node.name.length > 50 ? node.name.substring(0, 50) + '...' : node.name;
             const displayName = limitedName || 'Not Set';
             const totalQuantity = calculateTotalQuantity(node);
@@ -3664,11 +4340,13 @@ Recipe Tree Viewer
                 });
             }
             
-            const children = nodes.filter(n => n.parentId === node.id);
+            const children = nodes.filter(n =>
+                n.parentId === node.id && (!excludeCompleted || !n.completed)
+            );
             children.forEach((child, childIndex) => {
                 const childIsLast = childIndex === children.length - 1;
                 const childPrefix = prefix + (isLast ? '    ' : '│   ');
-                result += generateNodeTree(child, childPrefix, childIsLast);
+                result += generateNodeTree(child, childPrefix, childIsLast, excludeCompleted);
             });
             
             return result;
@@ -3766,10 +4444,6 @@ Recipe Tree Viewer
                 
                 restoreTreeData(treeData);
                 
-                // Update UI
-                const btn = document.getElementById('treeViewBtn');
-                btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
-                
                 // Set flag to prevent camera compensation during JSON load
                 isInitialLoad = true;
                 
@@ -3799,12 +4473,20 @@ Recipe Tree Viewer
         document.addEventListener('click', (e) => {
             const modal = document.getElementById('modalOverlay');
             const saveLoadModal = document.getElementById('saveLoadModalOverlay');
+            const settingsModal = document.getElementById('settingsModalOverlay');
+            const aboutModal = document.getElementById('aboutModalOverlay');
             
             if (e.target === modal) {
                 closeModal();
             }
             if (e.target === saveLoadModal) {
                 closeSaveLoadModal();
+            }
+            if (e.target === settingsModal) {
+                closeSettingsModal();
+            }
+            if (e.target === aboutModal) {
+                closeAboutModal();
             }
         });
 
@@ -3879,10 +4561,6 @@ Recipe Tree Viewer
                 const treeData = preset.data;
                 
                 restoreTreeData(treeData, true);
-                
-                // Update UI
-                const btn = document.getElementById('treeViewBtn');
-                btn.textContent = treeDirectionTopToBottom ? '▼' : '▶';
                 
                 // Set flag to prevent camera compensation during preset load
                 isInitialLoad = true;
