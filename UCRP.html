@@ -2222,7 +2222,7 @@ Recipe Tree Viewer
                     removeItemRelationshipIfUnused(node.parentId, previousItemId, node.id);
                 }
                 node.itemId = existingItem.id;
-                const matchingNode = nodes.find(n => n.id !== node.id && n.itemId === existingItem.id);
+                const matchingNode = nodes.find(n => n.id !== node.id && n.itemId === existingItem.id && !n.isGhost);
                 node.outputQuantity = matchingNode?.outputQuantity || 1;
                 
                 // If this node has a parent, add the item relationship
@@ -2241,7 +2241,7 @@ Recipe Tree Viewer
 
                 // Create child nodes for this node based on the existing item's children (only if not ghost)
                 if (!node.isGhost) {
-                    syncChildNodesWithItem(node);
+                    syncChildNodesWithItem(node, matchingNode);
                 }
             } else {
                 // Create new item
@@ -4069,7 +4069,7 @@ Recipe Tree Viewer
         }
 
         // Sync child nodes with an item's recipe
-        function syncChildNodesWithItem(node) {
+        function syncChildNodesWithItem(node, recipeSourceNode = null) {
             if (!node.itemId) return;
             
             const item = items.get(node.itemId);
@@ -4077,6 +4077,27 @@ Recipe Tree Viewer
 
             // Clear existing children for this node
             const childrenToRemove = getAllChildren(node.id);
+            const childrenToRemoveSet = new Set(childrenToRemove);
+
+            // Use another occurrence of this item as the recipe template. Its node
+            // values preserve quantities that are not stored on the Item itself.
+            if (!recipeSourceNode ||
+                recipeSourceNode.id === node.id ||
+                recipeSourceNode.itemId !== node.itemId ||
+                recipeSourceNode.isGhost ||
+                childrenToRemoveSet.has(recipeSourceNode.id)) {
+                recipeSourceNode = nodes.find(n =>
+                    n.id !== node.id &&
+                    n.itemId === node.itemId &&
+                    !n.isGhost &&
+                    !childrenToRemoveSet.has(n.id)
+                );
+            }
+
+            const sourceChildren = recipeSourceNode
+                ? recipeSourceNode.children.map(id => nodes.find(n => n.id === id)).filter(n => n)
+                : [];
+
             nodes = nodes.filter(n => !childrenToRemove.includes(n.id));
             node.children = [];
 
@@ -4087,14 +4108,15 @@ Recipe Tree Viewer
             for (const childItemId of item.childItems) {
                 const childItem = items.get(childItemId);
                 if (childItem) {
+                    const sourceChildNode = sourceChildren.find(n => n.itemId === childItemId && !n.isGhost);
                     const childNode = new TreeNode(
                         nextId++, 
                         childItemId, 
-                        childItem.defaultQuantity, 
+                        sourceChildNode?.quantity || childItem.defaultQuantity,
                         childX, 
                         childY, 
                         node.id,
-                        nodes.find(n => n.itemId === childItemId)?.outputQuantity || 1
+                        sourceChildNode?.outputQuantity || nodes.find(n => n.itemId === childItemId)?.outputQuantity || 1
                     );
                     childNode.completed = node.completed;
                     
@@ -4102,7 +4124,7 @@ Recipe Tree Viewer
                     node.children.push(childNode.id);
                     
                     // Recursively create child nodes for this child
-                    syncChildNodesWithItem(childNode);
+                    syncChildNodesWithItem(childNode, sourceChildNode);
                     
                     // Update position for next child
                     if (treeDirectionTopToBottom) {
@@ -4375,7 +4397,7 @@ Recipe Tree Viewer
                          // Add back any children this item should have
                          const item = items.get(regularNode.itemId);
                          if (item && item.childItems.size > 0) {
-                             syncChildNodesWithItem(childNode);
+                             syncChildNodesWithItem(childNode, regularNode);
                          }
                      }
                  }
